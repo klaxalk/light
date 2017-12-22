@@ -18,17 +18,15 @@ endif
 	help2man $(MANFLAGS) ./light | gzip - > light.1.gz
 
 install: light man
-	mkdir -p $(BINDIR)
-	cp -f ./light $(BINDIR)/light
-	chown root $(BINDIR)/light
-	chmod 4755 $(BINDIR)/light
-	mkdir -p $(MANDIR)
-	mv light.1.gz $(MANDIR)
+	install -dZ $(BINDIR)
+	install -DZ -m 4755 ./light -t $(BINDIR)
+	install -dZ $(MANDIR)
+	install -DZ light.1.gz -t $(MANDIR)
 
 uninstall:
-	rm $(BINDIR)/light
+	rm -f $(BINDIR)/light
 	rm -rf /etc/light
-	rm $(MANDIR)/light.1.gz
+	rm -f $(MANDIR)/light.1.gz
 
 clean:
 	rm -vfr *~ light light.1.gz
