@@ -1,4 +1,6 @@
-PREFIX=$(DESTDIR)/usr
+ifeq ($(PREFIX),)
+	PREFIX := /usr
+endif
 BINDIR=$(PREFIX)/bin
 MANDIR=$(PREFIX)/share/man/man1
 
