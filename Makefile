@@ -1,8 +1,8 @@
 ifeq ($(PREFIX),)
 	PREFIX := /usr
 endif
-BINDIR=$(PREFIX)/bin
-MANDIR=$(PREFIX)/share/man/man1
+BINDIR=$(DESTDIR)$(PREFIX)/bin
+MANDIR=$(DESTDIR)$(PREFIX)/share/man/man1
 
 CC=gcc
 CFLAGS=-std=c89 -O2 -pedantic -Wall -I"./include" -D_XOPEN_SOURCE=500
