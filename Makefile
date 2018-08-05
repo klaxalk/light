@@ -1,6 +1,8 @@
-PREFIX=$(DESTDIR)/usr
-BINDIR=$(PREFIX)/bin
-MANDIR=$(PREFIX)/share/man/man1
+ifeq ($(PREFIX),)
+	PREFIX := /usr
+endif
+BINDIR=$(DESTDIR)$(PREFIX)/bin
+MANDIR=$(DESTDIR)$(PREFIX)/share/man/man1
 
 CC=gcc
 CFLAGS=-std=c89 -O2 -pedantic -Wall -I"./include" -D_XOPEN_SOURCE=500
