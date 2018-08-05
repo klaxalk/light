@@ -1,4 +1,5 @@
 SUBDIRS        = src
+dist_man1_MANS = light.1
 doc_DATA       = README.md LICENSE CHANGELOG
 EXTRA_DIST     = README.md LICENSE CHANGELOG
 
