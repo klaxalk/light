@@ -29,7 +29,27 @@ I recommend you go with light-git as you might miss important features and bugfi
 
 ### Manual
 
-`make && sudo make install`
+We recommended downloading a versioned tarball from the relases page on
+GitHub.  Download and untar the archive:
+
+    tar xf light-x.yy.tar.gz
+    cd light-x.yy/
+    ./configure && make
+    sudo make install
+
+However, should you want to try the latest GitHub source you first need
+to clone the repository and run the `autogen.sh` script.  This requires
+`automake` and `autoconf` to be installed on your system.
+
+    ./autogen.sh
+    ./configure && make
+    sudo make install
+
+The `configure` script and `Makefile.in` files are not part of GIT
+because they are generated at release time with `make release`.
+
+
+### Permissions
 
 **Optional:** If you want to use udev rules instead of suid to manage sysfs permissions, you may skip the `make install` step and instead add something like the following to `/etc/udev/rules.d/90-backlight.rules` after copying your binaries:
 ```
