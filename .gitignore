@@ -1,6 +1,9 @@
 *~
 *.o
 .deps
+GPATH
+GRTAGS
+GTAGS
 light
 light.1.gz
 aclocal.m4
