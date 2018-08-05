@@ -1,0 +1,112 @@
+.\"  -*- nroff -*-
+.Dd August 4, 2018
+.Os GNU/Linux
+.Dt LIGHT 1 URM
+.Sh NAME
+.Nm light
+.Nd a program to control backlight controllers
+.Sh SYNOPSIS
+.Nm light
+.Op Fl abcGhHkIlLmOprV
+.Op Fl s Ar ARG
+.Op Fl v Ar LEVEL
+.Op Fl A Ar VAL
+.Op Fl S Ar VAL
+.Op Fl U Ar VAL
+.Sh DESCRIPTION
+.Nm
+is a program to control backlight display and keyboard controllers under
+GNU/Linux.
+.Pp
+.Bl -bullet -compact
+.It
+Operates independently of X (X-Window)
+.It
+Can automatically figure out the best controller to use, making full use
+of the underlying hardware
+.It
+Supports a minimum cap on the brightness value, as some controllers set
+the display to be pitch black at a vaĺue of 0 (or higher)
+.El
+.Sh COMMANDS
+The following unique commands are supported:
+.Pp
+.Bl -tag -width Ds
+.It Fl A Ar VAL
+Add value
+.It Fl G
+Get value, default
+.It Fl H , Fl h
+Show help text and exit
+.It Fl I
+Restore brightness
+.It Fl L
+List controllers
+.It Fl O
+Save brightness
+.It Fl S Ar VAL
+Set value
+.It Fl U Ar VAL
+Subtract value
+.It Fl V
+Show program version and exit
+.El
+.Sh OPTIONS
+The behavior of the above commands can be modified using these options:
+.Pp
+.Bl -tag -width Ds
+.It Fl b
+Set
+.Fl S ,
+Get
+.Fl G ,
+Add
+.Fl A ,
+or Subtract
+.Fl U
+active brightness, default
+.It Fl k
+Act on keyboard backlight
+.It Fl l
+Act on display backlight, default
+.It Fl m
+Get 
+.Fl G
+maximum brightness
+.It Fl c
+Set
+.Fl S
+or get
+.Fl G
+minimum cap for brightness
+.It Fl a
+Select controller automatically, default
+.It Fl p
+Interpret input and output values in percent, default
+.It Fl r
+Interpret input and output values in raw mode
+.It Fl s Ar ARG
+Specify controller to use.  Use
+.Fl L
+to list available controllers
+.It Fl v Ar ARG
+Set verbosity level, by default
+.Nm
+only outputs read values:
+.Pp
+.Bl -tag -width 0: -compact
+.It 0:
+Read values
+.It 1:
+Read values, Errors
+.It 2:
+Read values, Errors, Warnings
+.It 3:
+Read values, Errors, Warnings, Notices
+.El
+.El
+.Sh AUTHORS
+Copyright \(co 2014 Fredrik Haikarainen
+.Pp
+This is free software, see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
