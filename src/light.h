@@ -1,25 +1,22 @@
-#ifndef LIGHT_H
-#define LIGHT_H
+#ifndef LIGHT_H_
+#define LIGHT_H_
 
+#include "config.h"
 #include "helpers.h"
 
 #include <sys/types.h>
 #include <dirent.h>
 #include <linux/limits.h>
 
-#define LIGHT_VER_MAJOR 0
-#define LIGHT_VER_MINOR 10
-#define LIGHT_VER_TYPE "beta"
-#define LIGHT_YEAR 2014
+#define LIGHT_YEAR   "2012-2018"
 #define LIGHT_AUTHOR "Fredrik Haikarainen"
 
-#define ASSERT_SET(t,v) \
-  if(v)\
-  {\
-    fprintf(stderr, t" arguments can not be used in conjunction.\n");\
-    return FALSE;\
-  }\
-  v = TRUE;
+#define ASSERT_SET(t,v)							\
+	if (v) {							\
+		fprintf(stderr, t" arguments cannot be used in conjunction.\n"); \
+		return FALSE;						\
+	}								\
+	v = TRUE;
 
 #define ASSERT_OPSET() ASSERT_SET("Operation", opSet)
 #define ASSERT_TARGETSET() ASSERT_SET("Target", targetSet)
@@ -138,4 +135,4 @@ LIGHT_BOOL light_saveBrightness(char const *controller, unsigned long v);
 
 LIGHT_BOOL light_restoreBrightness(char const *controller);
 
-#endif /* LIGHT_H */
+#endif /* LIGHT_H_ */

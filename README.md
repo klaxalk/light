@@ -27,8 +27,8 @@ Introduction
 * Possibility to set a minimum brightness value
 
 Let's get started with a few examples, for details, see below for the
-full description of the different operating modes, value conversion and
-how to operate different controllers.
+full description of the different commands, options and how to access
+different controllers.
 
 
 Examples
@@ -77,85 +77,61 @@ Verify by reading back the max brightness, you should get a value of 1:
 Usage
 -----
 
-Light has 5 different criteria on flags to use: operation modes, value
-mode, target, field and controller mode.  Flags from these different
-modes can never be used in conjunction, i.e. you cannot get and set a
-value at the same time, that requires different invocations.
+### Commands
 
-**Note:** like most UNIX applications, light only print errors if you
-  are using it incorrectly. If something goes wrong, and you can't
-  figure out why, try setting the verbosity flag with -v:
+* `-G`: Get (read) brightness/data from controllers/files
+* `-S VAL`: Set (write)brightness/data to controllers/files
+* `-A VAL`: Like `-S`, but adds the given value
+* `-U VAL`: Like `-S`, but subtracts the given value
+* `-O`: Save the current brightness for later use (usually used on shutdown)
+* `-I`: Restore the previously saved brightness (usually used on boot)
+* `-L`: List available controllers, see below `-k` option as well
+
+Without any options (below) the commands operate on the brightness of an
+automatically selected controller.  Values are given in percent, unless
+the below `r` option is also given.
+
+**Note:** like most UNIX applications, light only gives output on
+  errors.  If something goes wrong try the verbosity option `-v VAL`:
 
 * 0: No debug output
 * 1: Errors
 * 2: Errors, warnings
 * 3: Errors, warnings, notices
 
+### Options
 
-### Operation modes
+Values may be given, or presented, in percent or raw mode.  Raw mode is
+the format specific to the controller.  The default is in percent, but
+raw mode may be required for precise control, or when the steps are very
+few, e.g. for most keyboard backlight controllers.
 
-The operation modes describe **what** you want to do.
+* `-p`: Percent, default
+* `-r`: Raw mode
 
-* -G: Which **reads/gets** brightness/data from controllers/files
-* -S: Which **writes/sets** brightness/data to controllers/files
-* -A: Which does like -S but instead **adds** the value
-* -U: Which does like -S but instead '**subtracts** the value
-* -O: Save the current brightness for later use (usually used on shutdown)
-* -I: Restore the previously saved brightness (usually used on boot)
-* -L: List the available controllers
+By default the screen is the active target for all commands, use `-k` to
+select the keyboard instead.  In either case you may need to select a
+different controller, see below.
 
-When used by themselves operate on the brightness of a controller that
-is selected automatically. S, A and U needs another argument -- except
-for the main 4 criteria -- which is the value to set/add/subtract.  This
-can be specified either in percent or in raw values, but remember to
-specify the value mode (read below) if you want to write raw values.
+* `-l`: Act on screen backlight, default
+* `-k`: Act on keyboard backlight and LEDs
 
+By default commands act on the brightness property, which is read+write.
+The maximum brightness is a read-only property.  The minimum brightness
+cap is a feature implemented to protect against setting brightness too
+low, since some controllers make the screen go pitch black at 0%.  For
+controllers like that it is recommended to set this value.
 
-### Value modes
+* `-b`: Current brightness of selected controller, default
+* `-m`: Max. brightness of selected controller
+* `-c`: Min. brightness (cap) of selected controller (recommend raw mode)
 
-The value mode specify in what unit you want to read or write values
-in. The default one (if not specified) is in percent, the other one is
-raw mode and should always be used when you need very precise values (or
-only have a controller with a very small amount of brightness levels).
+Controller is automatically done to select the controller with maximum
+precision.  It can however also be done manually and we recommend the
+`-L` and `-Lk` commands to list available controllers:
 
-* -p: Percent
-* -r: Raw mode
-
-Remember, this is the unit that will be used when you set, get, add or
-subtract brightness values.
-
-
-### Target
-
-You can choose which target to act on:
-
-* -l: Act on screen backlight
-* -k: Act on keyboard backlight and LEDs
-
-
-### Field
-
-As you can not only handle the **brightness** of controllers, you may
-also specify a field to read/write from/to:
-
-* -b: Current brightness of selected controller
-* -m: Maximum brightness of selected controller
-* -c: Minimum brightness (cap) of selected controller
-
-The minimum brightness is a feature implemented as some controllers make
-the screen go pitch black at 0%, if you have a controller like that, it
-is recommended to set this value (in percent or raw mode).  These values
-are saved in raw mode though, so if you specify it in percent it might
-not be too accurate depending on your controller.
-
-
-### Controller modes
-
-Finally, you can either use the built-in controller selection to get the
-controller with the maximum precision, or you can specify one manually
-with the -s flag. The -a flag will force automatic mode and is
-default. Use -L to get a list of controllers to use with the -s flag (to
-specify which controller to use).
+* `-a`: Automatic controller selection
+* `-s ARG`: Manual controller selection
 
 **Note:** Without the `-s` flag on _every_ command light will default
   to automatic controller selection.
