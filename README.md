@@ -1,31 +1,155 @@
-# Light
+Light - A Program to Control Backlight Controllers
+==================================================
 
-Copyright (C) 2012 - 2014, Fredrik Haikarainen
-This is free software, see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
+- [Introduction](#introduction)
+- [Examples](#examples)
+- [Usage](#usage)
+  - [Operation modes](#operation-modes)
+  - [Value modes](#value-modes)
+  - [Target](#target)
+  - [Field](#field)
+  - [Controller modes](#controller-modes)
+- [Installation](#installation)
+  - [Arch Linux](#arch-linux)
+  - [Manual](#manual)
+  - [Permissions](#permissions)
+- [Origin & References](#origin--references)
 
 
-## Description
+Introduction
+------------
 
-Light is a program to control backlight controllers under GNU/Linux, it is the successor of lightscript, which was a bash script with the same purpose, and tries to maintain the same functionality.
+[Light][] is a program to control backlight controllers under GNU/Linux:
+
+* Works, in particular when other software, e.g. xbacklight, does not
+* Does not rely on X
+* Automatically detects the best controller
+* Possibility to set a minimum brightness value
+
+Let's get started with a few examples, for details, see below for the
+full description of the different commands, options and how to access
+different controllers.
 
 
-## Features
+Examples
+--------
 
-* Works excellent where other software have been proven unusable or problematic, thanks to how it operates internally and the fact that it does not rely on X.
-* Can automatically figure out the best controller to use, making full use of underlying hardware.
-* Possibility to set a minimum brightness value, as some controllers set the screen to be pitch black at a vaĺue of 0 (or higher).
+Get the current brightness in percent
+
+    light -G
+
+or
+
+     light
+
+Increase brightness by 5 percent
+
+    light -A 5
+
+Set the minimum cap to 2 in raw value on the acpi_video0 controller:
+
+    light -cr -s acpi_video0 -S 2
+
+Try to set the brightness to 0 after that, it will be changed to the
+minimum 2:
+
+    light -r -s acpi_video0 -S 0
+
+Find keyboard controllers:
+
+    light -k -L
+
+Activate `ScrollLock` LED, here `input15` is used, but this varies
+between different systems:
+
+    light -k -s "input15::scrolllock" -S 100
+
+Usually, LEDs only take 0 or 1 in raw value (i.e. for off/on), so you
+can instead write:
+
+    light -kr -s "input15::scrolllock" -S 1
+
+Verify by reading back the max brightness, you should get a value of 1:
+
+    light -kr -m -s "input15::scrolllock
 
 
-## Installation
+Usage
+-----
+
+### Commands
+
+* `-G`: Get (read) brightness/data from controllers/files
+* `-S VAL`: Set (write)brightness/data to controllers/files
+* `-A VAL`: Like `-S`, but adds the given value
+* `-U VAL`: Like `-S`, but subtracts the given value
+* `-O`: Save the current brightness for later use (usually used on shutdown)
+* `-I`: Restore the previously saved brightness (usually used on boot)
+* `-L`: List available controllers, see below `-k` option as well
+
+Without any options (below) the commands operate on the brightness of an
+automatically selected controller.  Values are given in percent, unless
+the below `r` option is also given.
+
+**Note:** like most UNIX applications, light only gives output on
+  errors.  If something goes wrong try the verbosity option `-v VAL`:
+
+* 0: No debug output
+* 1: Errors
+* 2: Errors, warnings
+* 3: Errors, warnings, notices
+
+### Options
+
+Values may be given, or presented, in percent or raw mode.  Raw mode is
+the format specific to the controller.  The default is in percent, but
+raw mode may be required for precise control, or when the steps are very
+few, e.g. for most keyboard backlight controllers.
+
+* `-p`: Percent, default
+* `-r`: Raw mode
+
+By default the screen is the active target for all commands, use `-k` to
+select the keyboard instead.  In either case you may need to select a
+different controller, see below.
+
+* `-l`: Act on screen backlight, default
+* `-k`: Act on keyboard backlight and LEDs
+
+By default commands act on the brightness property, which is read+write.
+The maximum brightness is a read-only property.  The minimum brightness
+cap is a feature implemented to protect against setting brightness too
+low, since some controllers make the screen go pitch black at 0%.  For
+controllers like that it is recommended to set this value.
+
+* `-b`: Current brightness of selected controller, default
+* `-m`: Max. brightness of selected controller
+* `-c`: Min. brightness (cap) of selected controller (recommend raw mode)
+
+Controller is automatically done to select the controller with maximum
+precision.  It can however also be done manually and we recommend the
+`-L` and `-Lk` commands to list available controllers:
+
+* `-a`: Automatic controller selection
+* `-s ARG`: Manual controller selection
+
+**Note:** Without the `-s` flag on _every_ command light will default
+  to automatic controller selection.
+
+
+Installation
+------------
 
 ### Arch Linux
 
 If you run Arch Linux, there exists 2 packages;
-* [light-git](https://aur.archlinux.org/packages/light-git) - For the absolutely latest version
-* [light](https://aur.archlinux.org/packages/light) - For the latest tagged release
 
-I recommend you go with light-git as you might miss important features and bugfixes if you do not.
+* [light-git][] - For the absolutely latest version
+* [light-tag][] - For the latest tagged release
+
+We recommend you go with light-git as you might miss important features
+and bugfixes if you do not.
+
 
 ### Manual
 
@@ -51,98 +175,23 @@ because they are generated at release time with `make release`.
 
 ### Permissions
 
-**Optional:** If you want to use udev rules instead of suid to manage sysfs permissions, you may skip the `make install` step and instead add something like the following to `/etc/udev/rules.d/90-backlight.rules` after copying your binaries:
-```
-ACTION=="add", SUBSYSTEM=="backlight", RUN+="/bin/chgrp video /sys/class/backlight/%k/brightness"
-ACTION=="add", SUBSYSTEM=="backlight", RUN+="/bin/chmod g+w /sys/class/backlight/%k/brightness"
-```
+**Optional:** Instead of SUID root you can set up udev rules to manage
+   sysfs permissions, you may skip the `make install` step and instead
+   copy the file `90-backlight.rules` to `/etc/udev/rules.d/`:
 
 
-## Usage
+    ACTION=="add", SUBSYSTEM=="backlight", RUN+="/bin/chgrp video /sys/class/backlight/%k/brightness"
+    ACTION=="add", SUBSYSTEM=="backlight", RUN+="/bin/chmod g+w /sys/class/backlight/%k/brightness"
 
-This application usually has 5 different criteria on flags to use, which are operation modes, value mode, target, field and controller mode. Flags from these different modes can never be used in conjunction, but all of them do not always have to be specified (although it is recommended to do so for verbosity).
 
-**Note:** This application will only print errors if you are using it incorrectly. If something goes wrong, and you can't figure out why, try setting the verbosity flag with -v:
+Origin & References
+-------------------
 
-* 0: No debug output
-* 1: Errors
-* 2: Errors, warnings
-* 3: Errors, warnings, notices
+Copyright (C) 2012-2018 Fredrik Haikarainen
 
-### Operation modes
+This is free software, see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
 
-The operation modes describe **what** you want to do.
-
-* -G: Which **reads/gets** brightness/data from controllers/files
-* -S: Which **writes/sets** brightness/data to controllers/files
-* -A: Which does like -S but instead **adds** the value
-* -U: Which does like -S but instead '**subtracts** the value
-* -O: Save the current brightness for later use (usually used on shutdown)
-* -I: Restore the previously saved brightness (usually used on boot)
-* -L: List the available controllers
-
-When used by themselves operate on the brightness of a controller that is selected automatically. S, A and U needs another argument -- except for the main 4 criteria -- which is the value to set/add/subtract.   This can be specified either in percent or in raw values, but remember to specify the value mode (read below) if you want to write raw values.
-
-### Value modes
-
-The value mode specify in what unit you want to read or write values in. The default one (if not specified) is in percent, the other one is raw mode and should always be used when you need very precise values (or only have a controller with a very small amount of brightness levels).
-
-* -p: Percent
-* -r: Raw mode
-
-Remember, this is the unit that will be used when you set, get, add or subtract brightness values.
-
-### Target
-
-You can choose which target to act on:
-
-* -l: Act on screen backlight
-* -k: Act on keyboard backlight and LEDs
-
-### Field
-
-As you can not only handle the **brightness** of controllers, you may also specify a field to read/write from/to:
-
-* -b: Current brightness of selected controller
-* -m: Maximum brightness of selected controller
-* -c: Minimum brightness (cap) of selected controller
-
-The minimum brightness is a feature implemented as some controllers make the screen go pitch black at 0%, if you have a controller like that, it is recommended to set this value (in either percent or in raw mode). These values will be saved in raw mode though, so if you specify it in percent it might not be too accurate depending on your controller.
-
-### Controller modes
-
-Finally, you can either use the built-in controller selection to get the controller with the maximum precision, or you can specify one manually with the -s flag. The -a flag will force automatic mode and is default. Use -L to get a list of controllers to use with the -s flag (to specify which controller to use). 
-
-**Notice: You _need_ to include the `-s` or `-a` flag on _every_ command you run. The controller setting will _not_ be stored anywhere! If you do not use any of the flags, it will always default to automatic selection.**
-
-### Examples
-
-Get the current brightness in percent
-
-`light -G`, or simply `light`
-
-Increase brightness by 5 percent
-
-`light -A 5`
-
-Set the minimum cap to 2 in raw value on the acpi_video0 controller:
-
-`light -Scrs "acpi_video0" 2`
-
-Try to set the brightness to 0 after that, it will be changed to the minimum 2
-
-`light -Srs "acpi_video0" 0`
-
-Find keyboard controllers
-
-`light -Lk`
-
-Activate `ScrollLock` LED
-
-`light -Sks "input15::scrolllock" 100`
-
-Usually, LEDs only take 0 or 1 in raw value (i.e. for off/on), so you can write
-
-`light -Skrs "input15::scrolllock" 1`
-
-Verify this with `light -v3 -mkrs input15::scrolllock`, you should get a max. brightness of 1
+[Light]:     https://github.com/haikarainen/light
+[light-git]: https://aur.archlinux.org/packages/light-git
+[light-tag]: https://aur.archlinux.org/packages/light

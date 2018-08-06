@@ -239,48 +239,45 @@ LIGHT_BOOL light_parseArguments(int argc, char** argv)
 }
 
 void light_printVersion(){
-  printf("Light %u.%u (%s)\n", LIGHT_VER_MAJOR, LIGHT_VER_MINOR, LIGHT_VER_TYPE);
-  printf("Copyright (C) %u %s\n", LIGHT_YEAR, LIGHT_AUTHOR);
-  printf("This is free software, see the source for copying conditions.  There is NO\n");
-  printf("warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE\n\n");
+  printf("v%s\n", VERSION);
 }
 
 void light_printHelp(){
-  printf("Usage: light <options> <value>\n");
-  printf("<value> has to be either integral(raw mode) or decimal(percent mode) depending on the specified value mode.\n");
-  printf("<options> can be any of the following:\n\n");
+	printf("Usage:\n"
+	       "  light [OPTIONS] <COMMAND> [VALUE]\n"
+	       "\n"
+	       "Commands:\n"
+	       "  -A VAL  Add value\n"
+	       "  -G      Get (read) value, default command\n"
+	       "  -H, -h  Show this help and exit\n"
+	       "  -I      Restore brightness\n"
+	       "  -L      List available controllers\n"
+	       "  -O      Save brightness\n"
+	       "  -S VAL  Set (write) value\n"
+	       "  -U VAL  Subtract value\n"
+	       "  -V      Show program version and exit\n"
+	       "\n"
+	       "Options:\n"
+	       "  -a      Automatic controller selection, default\n"
+	       "  -b      Brightness, default\n"
+	       "  -c      Act on minimum cap, only possible to read and set\n"
+	       "  -k      Act on keyboard backlight\n"
+	       "  -l      Act on screen backlight, default\n"
+	       "  -m      Maximum brightness, only possible to read\n"
+	       "  -p      Interpret input, and output, values in percent, default\n"
+	       "  -r      Interpret input, and outpot, values in raw mode\n"
+	       "  -s ARG  Specify controller to use, use -L and -Lk to list available\n"
+	       "  -v ARG  Verbosity level:\n"
+	       "            0: Values only, default\n"
+	       "            1: Values, Errors.\n"
+	       "            2: Values, Errors, Warnings.\n"
+	       "            3: Values, Errors, Warnings, Notices.\n"
+	       "\n");
 
-  printf("Operations (can not be used in conjunction):\n");
-  printf("  -H -h:\tPrints this help and exits\n");
-  printf("  -V:\t\tPrints version info and exits\n");
-  printf("  -G:\t\tGet value (default)\n");
-  printf("  -S:\t\tSet value\n");
-  printf("  -A:\t\tAdd value\n");
-  printf("  -U:\t\tSubtract value\n");
-  printf("  -L:\t\tList controllers\n");
-  printf("  -I:\t\tRestore brightness\n");
-  printf("  -O:\t\tSave brightness\n\n");
-
-  printf("Targets (can not be used in conjunction):\n");
-  printf("  -l:\t\tAct on screen backlight (default)\n");
-  printf("  -k:\t\tAct on keyboard backlight\n\n");
-
-  printf("Fields (can not be used in conjunction):\n");
-  printf("  -b:\t\tBrightness (default)\n  \t\tUsed with [GSAU]\n\n");
-  printf("  -m:\t\tMaximum brightness\n  \t\tUsed with [G]\n\n");
-  printf("  -c:\t\tMinimum cap\n  \t\tUsed with [GS]\n");
-  printf("  \t\tG returns null if no minimum cap is set.\n\n");
-
-  printf("Controller selection (can not be used in conjunction):\n");
-  printf("  -a:\t\tSelects controller automatically (default).\n");
-  printf("  -s:\t\tSpecify controller to use. (needs argument)\n\n");
-
-  printf("Value modes (can not be used in conjunction):\n");
-  printf("  -p:\t\tInterpret <value> as, and output values in, percent. (default)\n");
-  printf("  -r:\t\tInterpret <value> as, and output values in, raw mode.\n\n");
-
-  printf("Other:\n");
-  printf("  -v:\t\tSets the verbosity level, (needs argument).\n  \t\t0: Only outputs read values.\n  \t\t1: Read values, Errors.\n  \t\t2: Read values, Errors, Warnings.\n  \t\t3: Read values, Errors, Warnings, Notices.\n\n");
+	printf("Copyright (C) %s  %s\n", LIGHT_YEAR, LIGHT_AUTHOR);
+	printf("This is free software, see the source for copying conditions.  There is NO\n"
+	       "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE\n"
+	       "\n");
 }
 
 LIGHT_BOOL light_initialize(int argc, char** argv)
