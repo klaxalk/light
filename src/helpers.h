@@ -3,21 +3,14 @@
 
 #include <stdbool.h>
 
-/* Clamps x(value) between y(min) and z(max) in a nested ternary operation. 
- * if(x < y)
- * {
- *  y;
- * }else{
- *  if(x>z)
- *  {
- *    z;
- *  }else{
- *    x;
- *  }
- * }*/
-#define LIGHT_CLAMP(x, y, z) ((x<y) ? (light_logInfClamp(y)) : ((x>z) ? (light_logSupClamp(z)) : x ))
+/* Clamps x(value) between y(min) and z(max) in a nested ternary operation */
+#define LIGHT_CLAMP(val, min, max)					\
+	(val < min							\
+	 ? light_log_clamp_min(min)					\
+	 : (val > max							\
+	    ? light_log_clamp_max(max)					\
+	    : val ))
 
-#define LIGHT_LOG_FMT_BUF_SIZE 1024
 /* Verbosity levels: 
  * 0 - No output
  * 1 - Errors
@@ -30,64 +23,33 @@ typedef enum {
 	LIGHT_NOTE_LEVEL
 } light_loglevel_t;
 
-light_loglevel_t light_verbosity;
-char light_log_buffer[LIGHT_LOG_FMT_BUF_SIZE];
+light_loglevel_t light_loglevel;
 
-#define LIGHT_LOG(lvl,f,t,x)if(light_verbosity >= lvl){fprintf(f,t": \"%s\", in \"%s\" on line %u.\n", x, __FILE__, __LINE__);}
+#define LIGHT_LOG(lvl, fp, fmt, args...)				\
+	if (light_loglevel >= lvl)					\
+		fprintf(fp, "%s:%d:" fmt, __FILE__, __LINE__, ##args)
 
-#define LIGHT_NOTE(x)LIGHT_LOG(LIGHT_NOTE_LEVEL,stdout,"notice",x)
+#define LIGHT_NOTE(fmt, args...) LIGHT_LOG(LIGHT_NOTE_LEVEL,  stdout, "NOTE:" fmt, ##args)
+#define LIGHT_WARN(fmt, args...) LIGHT_LOG(LIGHT_WARN_LEVEL,  stderr, "WARN:" fmt, ##args)
+#define LIGHT_ERR(fmt, args...)  LIGHT_LOG(LIGHT_ERROR_LEVEL, stderr, "!ERR:" fmt, ##args)
+#define LIGHT_MEMERR()           LIGHT_ERR("memory error");
+#define LIGHT_PERMLOG(act, log)						\
+	do {								\
+		log("could not open '%s' for " act, filename);		\
+		log("Verify it exists with the right permissions");	\
+	} while (0)
+#define LIGHT_PERMERR(x)         LIGHT_PERMLOG(x, LIGHT_ERR)
+#define LIGHT_PERMWARN(x)        LIGHT_PERMLOG(x, LIGHT_WARN)
 
-#define LIGHT_WARN(x)LIGHT_LOG(LIGHT_WARN_LEVEL,stderr,"warning",x)
+bool light_file_write_val   (char const *filename, unsigned long val);
+bool light_file_read_val    (char const *filename, unsigned long *val);
 
-#define LIGHT_ERR(x)LIGHT_LOG(LIGHT_ERROR_LEVEL,stderr,"error",x)
+bool light_file_is_writable (char const *filename);
+bool light_file_is_readable (char const *filename);
 
-#define LIGHT_LOG_FMT(x,s,f)if(snprintf(light_log_buffer, LIGHT_LOG_FMT_BUF_SIZE,x,s) > 0){f(light_log_buffer);}
+unsigned long light_log_clamp_min(unsigned long min);
+unsigned long light_log_clamp_max(unsigned long max);
 
-#define LIGHT_NOTE_FMT(x,s)LIGHT_LOG_FMT(x,s,LIGHT_NOTE);
-
-#define LIGHT_WARN_FMT(x,s)LIGHT_LOG_FMT(x,s,LIGHT_WARN);
-
-#define LIGHT_ERR_FMT(x,s)LIGHT_LOG_FMT(x,s,LIGHT_ERR);
-
-#define LIGHT_MEMERR() LIGHT_ERR("memory error");
-
-#define LIGHT_PERMLOG(x,f)f##_FMT("could not open '%s' for "x,filename); f("check if this file exists or if you have the right permissions");
-
-#define LIGHT_PERMERR(x) LIGHT_PERMLOG(x,LIGHT_ERR)
-
-#define LIGHT_PERMWARN(x) LIGHT_PERMLOG(x,LIGHT_WARN)
-
-/* Reads an unsigned integer from a file into `i` if able, otherwise returns false and leaves `i` untouched */
-bool light_readUInt(char const *filename, unsigned int *v);
-
-/* Writes an unsigned integer `i` into file `filename` if able, otherwise returns false */
-bool light_writeUInt(char const *filename, unsigned int v);
-
-bool light_writeULong(char const *filename, unsigned long v);
-bool light_readULong(char const *filename, unsigned long *v);
-
-/* Reads a file into null-terminated `buffer` if able, otherwise returns false
- * If `size` isn't NULL, it will be set to the read size.
- *
- * WARNING: `buffer` HAS to be freed by the user, also make sure it is NULL before passed */
-bool light_readString(char const *filename, char *buffer, long *size);
-
-/* Returns true if `path` is a valid directory, false otherwise */
-bool light_isDir(char const *path);
-
-/* Returns true if file is writable, false otherwise */
-bool light_isWritable(char const *filename);
-
-/* Returns true if file is readable, false otherwise */
-bool light_isReadable(char const *filename);
-
-/* Clamps the `percent` value between 0% and 100% */
-double light_clampPercent(double percent);
-
-/* Prints a notice about a value which was below `x` and was adjusted to it */
-unsigned long light_logInfClamp(unsigned long x);
-
-/* Prints a notice about a value which was above `x` and was adjusted to it */
-unsigned long light_logSupClamp(unsigned long x);
+double light_percent_clamp(double percent);
 
 #endif /* LIGHT_HELPERS_H */

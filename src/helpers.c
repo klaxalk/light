@@ -6,209 +6,105 @@
 #include <sys/types.h>
 #include <dirent.h>
 
-bool light_readUInt(char const *filename, unsigned int *i)
+bool light_file_read_val(char const *filename, unsigned long *val)
 {
-	FILE *fileHandle;
-	unsigned int iCopy;
+	FILE *fp;
+	unsigned long data;
 
-	fileHandle = fopen(filename, "r");
-
-	if (!fileHandle) {
+	fp = fopen(filename, "r");
+	if (!fp) {
 		LIGHT_PERMERR("reading");
 		return false;
 	}
 
-	if (fscanf(fileHandle, "%u", &iCopy) != 1) {
-		LIGHT_ERR_FMT("Couldn't parse a positive integer number from '%s'", filename);
-		fclose(fileHandle);
+	if (fscanf(fp, "%lu", &data) != 1) {
+		LIGHT_ERR("Couldn't parse a positive integer number from '%s'", filename);
+		fclose(fp);
 		return false;
 	}
 
-	*i = iCopy;
+	*val = data;
 
-	fclose(fileHandle);
+	fclose(fp);
 	return true;
 }
 
-bool light_writeUInt(char const *filename, unsigned int i)
+bool light_file_write_val(char const *filename, unsigned long val)
 {
-	FILE *fileHandle;
+	FILE *fp;
 
-	fileHandle = fopen(filename, "w");
-
-	if (!fileHandle) {
+	fp = fopen(filename, "w");
+	if (!fp) {
 		LIGHT_PERMERR("writing");
 		return false;
 	}
 
-	if (fprintf(fileHandle, "%u", i) < 0) {
+	if (fprintf(fp, "%lu", val) < 0) {
 		LIGHT_ERR("fprintf failed");
-		fclose(fileHandle);
+		fclose(fp);
 		return false;
 	}
 
-	fclose(fileHandle);
+	fclose(fp);
 	return true;
 }
 
-bool light_readULong(char const *filename, unsigned long *i)
+/* Returns true if file is writable, false otherwise */
+bool light_file_is_writable(char const *filename)
 {
-	FILE *fileHandle;
-	unsigned long iCopy;;
+	FILE *fp;
 
-	fileHandle = fopen(filename, "r");
-
-	if (!fileHandle) {
-		LIGHT_PERMERR("reading");
-		return false;
-	}
-
-	if (fscanf(fileHandle, "%lu", &iCopy) != 1) {
-		LIGHT_ERR_FMT("Couldn't parse a positive integer number from '%s'", filename);
-		fclose(fileHandle);
-		return false;
-	}
-
-	*i = iCopy;
-
-	fclose(fileHandle);
-	return true;
-}
-
-bool light_writeULong(char const *filename, unsigned long i)
-{
-	FILE *fileHandle;
-
-	fileHandle = fopen(filename, "w");
-
-	if (!fileHandle) {
-		LIGHT_PERMERR("writing");
-		return false;
-	}
-
-	if (fprintf(fileHandle, "%lu", i) < 0) {
-		LIGHT_ERR("fprintf failed");
-		fclose(fileHandle);
-		return false;
-	}
-
-	fclose(fileHandle);
-	return true;
-}
-
-bool light_readString(char const *filename, char *buffer, long *size)
-{
-	FILE *fileHandle;
-	long fileSize;
-	long readSize;
-
-	/* Make sure buffer pointer is null */
-	if (buffer != NULL) {
-		LIGHT_ERR("buffer passed to function isn't NULL");
-		return false;
-	}
-
-	/* Open file */
-	fileHandle = fopen(filename, "r");
-
-	if (!fileHandle) {
-		LIGHT_PERMERR("reading");
-		return false;
-	}
-
-	/* Get the file size */
-	fseek(fileHandle, 0L, SEEK_END);
-	fileSize = ftell(fileHandle);
-	rewind(fileHandle);
-
-	/* Allocate the string and null-terminate it */
-	buffer = malloc(sizeof(char) * (fileSize + 1));
-	memset(buffer, '\0', fileSize);
-
-	if (buffer == NULL) {
-		LIGHT_MEMERR();
-		fclose(fileHandle);
-		return false;
-	}
-
-	/* Read the file */
-	readSize = fread(buffer, sizeof(char), fileSize, fileHandle);
-
-	if (readSize != fileSize) {
-		LIGHT_ERR("read error");
-		free(buffer);
-		fclose(fileHandle);
-		return false;
-	}
-
-	/* Set the size */
-	if (size != NULL) {
-		*size = readSize;
-	}
-
-	/* All well, close handle and return true */
-	fclose(fileHandle);
-	return true;
-}
-
-bool light_isDir(char const *path)
-{
-	DIR *dirHandle = opendir(path);
-
-	if (!dirHandle) {
-		return false;
-	}
-
-	closedir(dirHandle);
-	return true;
-}
-
-bool light_isWritable(char const *filename)
-{
-	FILE *fileHandle = fopen(filename, "r+");
-
-	if (!fileHandle) {
+	fp = fopen(filename, "r+");
+	if (!fp) {
 		LIGHT_PERMWARN("writing");
 		return false;
 	}
 
-	fclose(fileHandle);
+	fclose(fp);
 	return true;
 }
 
-bool light_isReadable(char const *filename)
+/* Returns true if file is readable, false otherwise */
+bool light_file_is_readable(char const *filename)
 {
-	FILE *fileHandle = fopen(filename, "r");
+	FILE *fp;
 
-	if (!fileHandle) {
+	fp = fopen(filename, "r");
+	if (!fp) {
 		LIGHT_PERMWARN("reading");
 		return false;
 	}
 
-	fclose(fileHandle);
+	fclose(fp);
 	return true;
 }
 
-unsigned long light_logInfClamp(unsigned long x)
+/* Prints a notice about a value which was below `x` and was adjusted to it */
+unsigned long light_log_clamp_min(unsigned long min)
 {
-	LIGHT_NOTE_FMT("specified value is inferior to %lu (raw), so adjusting it to this mininum value", x);
-	return x;
+	LIGHT_NOTE("too small value, adjusting to mininum %lu (raw)", min);
+	return min;
 }
 
-unsigned long light_logSupClamp(unsigned long x)
+/* Prints a notice about a value which was above `x` and was adjusted to it */
+unsigned long light_log_clamp_max(unsigned long max)
 {
-	LIGHT_NOTE_FMT("specified value is superior to %lu (raw), so adjusting it to this maximum value", x);
-	return x;
+	LIGHT_NOTE("too large value, adjusting to mavalimum %lu (raw)", max);
+	return max;
 }
 
-double light_clampPercent(double p)
+/* Clamps the `percent` value between 0% and 100% */
+double light_percent_clamp(double val)
 {
-	if (p < 0.0) {
-		LIGHT_WARN_FMT("specified value %g%% is not valid, adjusting it to 0%%", p);
+	if (val < 0.0) {
+		LIGHT_WARN("specified value %g%% is not valid, adjusting it to 0%%", val);
 		return 0.0;
-	} else if (p > 100.0) {
-		LIGHT_WARN_FMT("specified value %g%% is not valid, adjusting it to 100%%", p);
+	}
+
+	if (val > 100.0) {
+		LIGHT_WARN("specified value %g%% is not valid, adjusting it to 100%%", val);
 		return 100.0;
 	}
-	return p;
+
+	return val;
 }
