@@ -1,6 +1,8 @@
 #ifndef LIGHT_HELPERS_H
 #define LIGHT_HELPERS_H
 
+#include <stdbool.h>
+
 /* Clamps x(value) between y(min) and z(max) in a nested ternary operation. 
  * if(x < y)
  * {
@@ -20,14 +22,15 @@
  * 0 - No output
  * 1 - Errors
  * 2 - Errors, warnings 
- * 3 - Errors, warnings, notices */
-typedef enum LIGHT_LOG_LEVEL {
-  LIGHT_ERROR_LEVEL = 1,
-  LIGHT_WARN_LEVEL,
-  LIGHT_NOTE_LEVEL
-} LIGHT_LOG_LEVEL;
+ * 3 - Errors, warnings, notices
+ */
+typedef enum {
+	LIGHT_ERROR_LEVEL = 1,
+	LIGHT_WARN_LEVEL,
+	LIGHT_NOTE_LEVEL
+} light_loglevel_t;
 
-LIGHT_LOG_LEVEL light_verbosity;
+light_loglevel_t light_verbosity;
 char light_log_buffer[LIGHT_LOG_FMT_BUF_SIZE];
 
 #define LIGHT_LOG(lvl,f,t,x)if(light_verbosity >= lvl){fprintf(f,t": \"%s\", in \"%s\" on line %u.\n", x, __FILE__, __LINE__);}
@@ -54,35 +57,29 @@ char light_log_buffer[LIGHT_LOG_FMT_BUF_SIZE];
 
 #define LIGHT_PERMWARN(x) LIGHT_PERMLOG(x,LIGHT_WARN)
 
-/* Typedef for boolean values */
-typedef enum LIGHT_BOOL {
-  FALSE = 0,
-  TRUE
-} LIGHT_BOOL;
+/* Reads an unsigned integer from a file into `i` if able, otherwise returns false and leaves `i` untouched */
+bool light_readUInt(char const *filename, unsigned int *v);
 
-/* Reads an unsigned integer from a file into `i` if able, otherwise returns FALSE and leaves `i` untouched */
-LIGHT_BOOL light_readUInt(char const *filename, unsigned int *v);
+/* Writes an unsigned integer `i` into file `filename` if able, otherwise returns false */
+bool light_writeUInt(char const *filename, unsigned int v);
 
-/* Writes an unsigned integer `i` into file `filename` if able, otherwise returns FALSE */
-LIGHT_BOOL light_writeUInt(char const *filename, unsigned int v);
+bool light_writeULong(char const *filename, unsigned long v);
+bool light_readULong(char const *filename, unsigned long *v);
 
-LIGHT_BOOL light_writeULong(char const *filename, unsigned long v);
-LIGHT_BOOL light_readULong(char const *filename, unsigned long *v);
-
-/* Reads a file into null-terminated `buffer` if able, otherwise returns FALSE
+/* Reads a file into null-terminated `buffer` if able, otherwise returns false
  * If `size` isn't NULL, it will be set to the read size.
  *
  * WARNING: `buffer` HAS to be freed by the user, also make sure it is NULL before passed */
-LIGHT_BOOL light_readString(char const * filename, char * buffer, long * size);
+bool light_readString(char const *filename, char *buffer, long *size);
 
-/* Returns TRUE if `path` is a valid directory, FALSE otherwise */
-LIGHT_BOOL light_isDir(char const * path);
+/* Returns true if `path` is a valid directory, false otherwise */
+bool light_isDir(char const *path);
 
-/* Returns TRUE if file is writable, FALSE otherwise */
-LIGHT_BOOL light_isWritable(char const * filename);
+/* Returns true if file is writable, false otherwise */
+bool light_isWritable(char const *filename);
 
-/* Returns TRUE if file is readable, FALSE otherwise */
-LIGHT_BOOL light_isReadable(char const * filename);
+/* Returns true if file is readable, false otherwise */
+bool light_isReadable(char const *filename);
 
 /* Clamps the `percent` value between 0% and 100% */
 double light_clampPercent(double percent);
