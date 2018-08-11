@@ -11,6 +11,7 @@ Light - A Program to Control Backlight Controllers
   - [Controller modes](#controller-modes)
 - [Installation](#installation)
   - [Arch Linux](#arch-linux)
+  - [Fedora](#fedora)
   - [Manual](#manual)
   - [Permissions](#permissions)
 - [Origin & References](#origin--references)
@@ -149,6 +150,15 @@ If you run Arch Linux, there exists 2 packages;
 
 We recommend you go with light-git as you might miss important features
 and bugfixes if you do not.
+
+
+### Fedora
+
+Fedora already has light packaged in main repos, so just run:
+
+    dnf install light
+
+and you're good to go.
 
 
 ### Manual
