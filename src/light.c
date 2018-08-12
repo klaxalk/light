@@ -1,5 +1,6 @@
 #include "light.h"
 
+#include <libgen.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -281,10 +282,33 @@ static bool light_parse_args(int argc, char **argv)
 	return true;
 }
 
+static int mkpath(char *dir, mode_t mode)
+{
+	struct stat sb;
+
+	if (!dir) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!stat(dir, &sb))
+		return 0;
+
+	mkpath(dirname(strdupa(dir)), mode);
+
+	return mkdir(dir, mode);
+}
+
 bool light_initialize(int argc, char **argv)
 {
 	light_cmd_t mode;
 	int rc;
+
+	/* Classic SUID root mode or new user based cache files */
+	if (geteuid() == 0)
+		snprintf(ctx.prefix, sizeof(ctx.prefix), "%s", "/etc/light");
+	else
+		snprintf(ctx.prefix, sizeof(ctx.prefix), "%s/.cache/light", getenv("HOME"));
 
 	light_defaults();
 	if (!light_parse_args(argc, argv)) {
@@ -297,22 +321,23 @@ bool light_initialize(int argc, char **argv)
 	if (mode == LIGHT_PRINT_HELP || mode == LIGHT_PRINT_VERSION || mode == LIGHT_LIST_CTRL)
 		return true;
 
+	/* Make sure we have a valid cache directory for all files */
 	if (mode == LIGHT_SAVE || (mode == LIGHT_SET && ctx.field == LIGHT_MIN_CAP)) {
-		/* Make sure we have a valid /etc/light directory, as well as mincap and save */
-		char const *const dirs[5] =
-		    { "/etc/light", "/etc/light/mincap", "/etc/light/save", "/etc/light/mincap/kbd",
-			"/etc/light/save/kbd"
+		const char *dirs[5] = {
+			"/mincap/kbd", "/save/kbd", NULL
 		};
-		char const *const *dir = dirs;
+		char path[strlen(ctx.prefix) + 20];
+		int i;
 
-		while (dir < dirs + 5) {
-			rc = mkdir(*dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+		for (i = 0; dirs[i]; i++) {
+			snprintf(path, sizeof(path), "%s%s", ctx.prefix, dirs[i]);
+
+			rc = mkpath(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 			if (rc && errno != EEXIST) {
 				LIGHT_ERR("'%s' does not exist and could not be created,"
-					  " make sure this application is run as root.", *dir);
+					  " make sure this application is run as root.", path);
 				return false;
 			}
-			++dir;
 		}
 	}
 
@@ -584,11 +609,11 @@ bool light_gen_path(char const *controller, light_target_t target, light_field_t
 			break;
 
 		case LIGHT_MIN_CAP:
-			val = snprintf(path, PATH_MAX, "/etc/light/mincap/%s", controller);
+			val = snprintf(path, PATH_MAX, "%s/mincap/%s", ctx.prefix, controller);
 			break;
 
 		case LIGHT_SAVERESTORE:
-			val = snprintf(path, PATH_MAX, "/etc/light/save/%s", controller);
+			val = snprintf(path, PATH_MAX, "%s/save/%s", ctx.prefix, controller);
 			break;
 		}
 	} else {
@@ -602,11 +627,11 @@ bool light_gen_path(char const *controller, light_target_t target, light_field_t
 			break;
 
 		case LIGHT_MIN_CAP:
-			val = snprintf(path, PATH_MAX, "/etc/light/mincap/kbd/%s", controller);
+			val = snprintf(path, PATH_MAX, "%s/mincap/kbd/%s", ctx.prefix, controller);
 			break;
 
 		case LIGHT_SAVERESTORE:
-			val = snprintf(path, PATH_MAX, "/etc/light/save/kbd/%s", controller);
+			val = snprintf(path, PATH_MAX, "%s/save/kbd/%s", ctx.prefix, controller);
 			break;
 		}
 	}
@@ -718,8 +743,8 @@ bool light_ctrl_exist(char const *controller)
 		if (!light_ctrl_get_brightness_maxPath(controller, &path))
 			return false;
 		if (!light_file_is_readable(path)) {
-			LIGHT_WARN
-			    ("could not open controller max brightness file for reading, so controller is not accessible");
+			LIGHT_WARN("could not open controller max brightness "
+				   "file for reading, so controller is not accessible");
 			free(path);
 			return false;
 		}
@@ -729,7 +754,7 @@ bool light_ctrl_exist(char const *controller)
 	if (!light_ctrl_get_brightnessPath(controller, &path))
 		return false;
 
-	if (ctx.cmd != LIGHT_GET &&
+	if (ctx.cmd != LIGHT_GET && ctx.cmd != LIGHT_SAVE &&
 	    ctx.field != LIGHT_MIN_CAP && !light_file_is_writable(path)) {
 		LIGHT_WARN("could not open controller brightness file for writing, so controller is not accessible");
 		free(path);
@@ -933,7 +958,7 @@ bool light_ctrl_save_brightness(char const *controller, unsigned long val)
 		return false;
 	}
 
-	LIGHT_NOTE("saving brightness %lu (raw) to save file\n", val);
+	LIGHT_NOTE("saving brightness %lu (raw) to save file %s\n", val, path);
 	if (!light_file_write_val(path, val)) {
 		LIGHT_ERR("could not write to save/restore file");
 		free(path);
@@ -954,7 +979,7 @@ bool light_ctrl_restore_brightness(char const *controller)
 		return false;
 	}
 
-	LIGHT_NOTE("restoring brightness from saved file");
+	LIGHT_NOTE("restoring brightness from saved file %s", path);
 	if (!light_file_read_val(path, &val)) {
 		LIGHT_ERR("could not read saved value");
 		free(path);
