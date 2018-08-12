@@ -3,6 +3,11 @@ dist_man1_MANS = light.1
 doc_DATA       = README.md LICENSE CHANGELOG
 EXTRA_DIST     = README.md LICENSE CHANGELOG
 
+if UDEV
+udev_DATA      = 90-backlight.rules
+EXTRA_DIST    += $(top_srcdir)/90-backlight.rules
+endif
+
 #
 # Target to run when building a release
 #

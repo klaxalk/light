@@ -175,13 +175,16 @@ because they are generated at release time with `make release`.
 
 ### Permissions
 
-**Optional:** Instead of SUID root you can set up udev rules to manage
-   sysfs permissions, you may skip the `make install` step and instead
-   copy the file `90-backlight.rules` to `/etc/udev/rules.d/`:
+Optionally, instead of the classic SUID root mode of operation, udev
+rules can be set up to manage the kernel sysfs permissions.  Use the
+configure script to enable this mode of operation:
 
+    ./configure --with-udev && make
+    sudo make install
 
-    ACTION=="add", SUBSYSTEM=="backlight", RUN+="/bin/chgrp video /sys/class/backlight/%k/brightness"
-    ACTION=="add", SUBSYSTEM=="backlight", RUN+="/bin/chmod g+w /sys/class/backlight/%k/brightness"
+This installs the file `90-backlight.rules` into `/lib/udev/rules.d/`.
+If your udev rules are located elsewhere, use `--with-udev=PATH`.
+
 
 
 Origin & References
