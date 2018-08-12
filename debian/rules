@@ -1,0 +1,17 @@
+#!/usr/bin/make -f
+# export DH_VERBOSE=1
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	dh_auto_configure -- --with-udev
+
+override_dh_installchangelogs:
+	dh_installchangelogs ChangeLog.md
+
+override_dh_auto_install:
+	dh_auto_install
+	rm -f debian/light/usr/share/doc/light/COPYING
+	rm -f debian/light/usr/share/doc/light/ChangeLog.md

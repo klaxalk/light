@@ -189,7 +189,7 @@ configure script to enable this mode of operation:
     ./configure --with-udev && make
     sudo make install
 
-This installs the file `90-backlight.rules` into `/lib/udev/rules.d/`.
+This installs the `90-backlight.rules` into `/usr/lib/udev/rules.d/`.
 If your udev rules are located elsewhere, use `--with-udev=PATH`.
 
 Note, in this mode `light` runs unpriviliged, so the `/etc/light`

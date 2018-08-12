@@ -1,0 +1,3 @@
+version=3
+opts=filenamemangle=s/.+\/v?(\d\S*)\.tar\.gz/light-$1\.tar\.gz/ \
+  https://github.com/haikarainen/light/releases .*/light-?(\d\S*)\.tar\.gz
