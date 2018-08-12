@@ -1,7 +1,7 @@
 SUBDIRS        = src
 dist_man1_MANS = light.1
-doc_DATA       = README.md LICENSE CHANGELOG
-EXTRA_DIST     = README.md LICENSE CHANGELOG
+doc_DATA       = README.md LICENSE ChangeLog.md
+EXTRA_DIST     = README.md LICENSE ChangeLog.md
 
 if UDEV
 udev_DATA      = 90-backlight.rules
