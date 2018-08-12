@@ -105,6 +105,14 @@ Read values, Errors, Warnings
 Read values, Errors, Warnings, Notices
 .El
 .El
+.Sh FILES
+When run in its classic SUID root mode
+.Nm
+caches settings and current brightness in
+.Pa /etc/light .
+In its non-priviliged mode of operation the
+.Pa ~/.cache/light
+directory is used instead.
 .Sh AUTHORS
 Copyright \(co 2014 Fredrik Haikarainen
 .Pp
