@@ -4,6 +4,22 @@ Change Log
 All relevant changes to the project are documented in this file.
 
 
+[v1.2][UNRELEASED] - 2018-08-xx
+-------------------------------
+
+### Changes
+- Convert to GNU configure & build system
+- Add support for installing non-SUID root using an udev rule
+  enabled `--with-udev` to the new configure script
+- Migrate to use `~/.cache/light` instead of `/etc/light` for
+  unpriviliged operation
+- Add proper light.1 man page, remvoes help2man dependency
+- Simplify presentation of commands and options in built-in help text,
+  as well as in the README and man page
+- Change to Linux coding style
+- Add Fedora installation instructions
+
+
 [v1.1.2][] - 2018-06-20
 -----------------------
 
