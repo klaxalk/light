@@ -60,9 +60,12 @@ typedef enum {
 } light_val_mode_t;
 
 typedef struct {
+	/* Cache file prefix */
+	char               prefix[NAME_MAX + 1];
+
 	/* Which controller to use */
-	light_ctrl_mode_t ctrl;
-	char              ctrl_name[NAME_MAX + 1];
+	light_ctrl_mode_t  ctrl;
+	char               ctrl_name[NAME_MAX + 1];
 
 	/* What to do with the controller */
 	light_cmd_t        cmd;

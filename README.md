@@ -185,6 +185,9 @@ configure script to enable this mode of operation:
 This installs the file `90-backlight.rules` into `/lib/udev/rules.d/`.
 If your udev rules are located elsewhere, use `--with-udev=PATH`.
 
+Note, in this mode `light` runs unpriviliged, so the `/etc/light`
+directory (for cached settings) is not used, instead the per-user
+specific `~/.cache/light` is used.
 
 
 Origin & References
