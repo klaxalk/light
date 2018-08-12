@@ -4,11 +4,8 @@ Light - A Program to Control Backlight Controllers
 - [Introduction](#introduction)
 - [Examples](#examples)
 - [Usage](#usage)
-  - [Operation modes](#operation-modes)
-  - [Value modes](#value-modes)
-  - [Target](#target)
-  - [Field](#field)
-  - [Controller modes](#controller-modes)
+  - [Commands](#commands)
+  - [Options](#options)
 - [Installation](#installation)
   - [Arch Linux](#arch-linux)
   - [Fedora](#fedora)
@@ -27,9 +24,9 @@ Introduction
 * Automatically detects the best controller
 * Possibility to set a minimum brightness value
 
-Let's get started with a few examples, for details, see below for the
-full description of the different commands, options and how to access
-different controllers.
+Let's get started with a few examples!  See the following sections for
+the detailed descriptions of all available commands, options and how to
+access different controllers.
 
 
 Examples
