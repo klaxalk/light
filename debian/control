@@ -1,0 +1,14 @@
+Source: light
+Section: x11
+Priority: optional
+Maintainer: Joachim Nilsson <troglobit@gmail.com>
+Homepage: https://github.com/haikarainen/light
+Build-Depends: debhelper (>= 9~), autoconf
+Vcs-Git: https://github.com/haikarainen/light.git
+Vcs-Browser: https://github.com/haikarainen/light/commits/
+Standards-Version: 3.9.3
+
+Package: light
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: a program to control backlight controllers under GNU/Linux

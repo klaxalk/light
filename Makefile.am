@@ -8,6 +8,10 @@ udev_DATA      = 90-backlight.rules
 EXTRA_DIST    += $(top_srcdir)/90-backlight.rules
 endif
 
+# lintian --profile debian -i -I --show-overrides ../$PKG.changes
+package:
+	dpkg-buildpackage -uc -us -B
+
 #
 # Target to run when building a release
 #
