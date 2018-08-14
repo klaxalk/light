@@ -28,6 +28,9 @@ Let's get started with a few examples!  See the following sections for
 the detailed descriptions of all available commands, options and how to
 access different controllers.
 
+Light is available in many GNU/Linux distributions already, and it also
+has a fork called [brillo][] by [Cameron Nemo](@CameronNemo).
+
 
 Examples
 --------
@@ -205,6 +208,7 @@ Copyright (C) 2012-2018 Fredrik Haikarainen
 This is free software, see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
 
-[Light]:     https://github.com/haikarainen/light
+[Light]:     https://github.com/haikarainen/light/
+[brillo]:    https://gitlab.com/cameronnemo/brillo/
 [light-git]: https://aur.archlinux.org/packages/light-git
 [light-tag]: https://aur.archlinux.org/packages/light
