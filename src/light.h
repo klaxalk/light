@@ -61,7 +61,7 @@ typedef enum {
 
 typedef struct {
 	/* Cache file prefix */
-	char               prefix[NAME_MAX + 1];
+	char               prefix[NAME_MAX];
 
 	/* Which controller to use */
 	light_ctrl_mode_t  ctrl;
