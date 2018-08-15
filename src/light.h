@@ -61,7 +61,7 @@ typedef enum {
 
 typedef struct {
 	/* Cache file prefix */
-	char               prefix[NAME_MAX + 1];
+	char               prefix[NAME_MAX];
 
 	/* Which controller to use */
 	light_ctrl_mode_t  ctrl;
@@ -89,7 +89,7 @@ bool light_execute                 (void);
 void light_free                    (void);
 
 bool light_ctrl_list               (void);
-bool light_ctrl_probe              (char *controller);
+bool light_ctrl_probe              (char *controller, size_t len);
 bool light_ctrl_exist              (char const *controller);
 
 bool light_ctrl_get_brightness     (char const *controller, unsigned long *v);

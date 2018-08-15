@@ -205,7 +205,6 @@ static bool light_parse_args(int argc, char **argv)
 			ctx.field = LIGHT_MIN_CAP;
 			break;
 
-			/* -- Controller selection -- */
 		case 'a':
 			ASSERT_CTRLSET();
 			ctx.ctrl = LIGHT_AUTO;
@@ -216,10 +215,9 @@ static bool light_parse_args(int argc, char **argv)
 			ctx.ctrl = LIGHT_SPECIFY;
 			if (!light_check_ctrl(optarg))
 				return false;
-			strncpy(ctx.ctrl_name, optarg, NAME_MAX);
-			ctx.ctrl_name[NAME_MAX] = '\0';
+
+			snprintf(ctx.ctrl_name, sizeof(ctx.ctrl_name), "%s", optarg);
 			break;
-			/* -- Value modes -- */
 
 		case 'p':
 			ASSERT_VALSET();
@@ -344,7 +342,7 @@ bool light_initialize(int argc, char **argv)
 	/* Make sure we have a valid controller before we proceed */
 	if (ctx.ctrl == LIGHT_AUTO) {
 		LIGHT_NOTE("Automatic mode -- finding best controller");
-		if (!light_ctrl_probe(ctx.ctrl_name)) {
+		if (!light_ctrl_probe(ctx.ctrl_name, sizeof(ctx.ctrl_name))) {
 			LIGHT_ERR("could not find suitable controller");
 			return false;
 		}
@@ -787,7 +785,7 @@ static bool light_ctrl_init(DIR **dir)
 	return true;
 }
 
-static bool light_ctrl_iterate(DIR *dir, char *current)
+static bool light_ctrl_iterate(DIR *dir, char *current, size_t len)
 {
 	struct dirent *d;
 	bool found = false;
@@ -809,14 +807,13 @@ static bool light_ctrl_iterate(DIR *dir, char *current)
 		}
 	}
 
-	strncpy(current, d->d_name, NAME_MAX);
-	current[NAME_MAX] = '\0';
+	snprintf(current, len, "%s", d->d_name);
 
 	return true;
 }
 
 /* WARNING: `controller` HAS to be at most NAME_MAX, otherwise fails */
-bool light_ctrl_probe(char *controller)
+bool light_ctrl_probe(char *controller, size_t len)
 {
 	DIR *dir;
 	unsigned long best = 0;
@@ -834,7 +831,7 @@ bool light_ctrl_probe(char *controller)
 		return false;
 	}
 
-	while (light_ctrl_iterate(dir, current)) {
+	while (light_ctrl_iterate(dir, current, sizeof(current))) {
 		unsigned long val = 0;
 
 		LIGHT_NOTE("found '%s' controller", current);
@@ -844,8 +841,7 @@ bool light_ctrl_probe(char *controller)
 				if (val > best) {
 					found = true;
 					best = val;
-					strncpy(best_name, current, NAME_MAX);
-					best_name[NAME_MAX] = '\0';
+					snprintf(best_name, sizeof(best_name), "%s", current);
 					ctx.has_cached_brightness_max = true;
 					ctx.cached_brightness_max = val;
 				} else {
@@ -871,8 +867,8 @@ bool light_ctrl_probe(char *controller)
 		return false;
 	}
 
-	strncpy(controller, best_name, NAME_MAX);
-	controller[NAME_MAX] = '\0';
+	snprintf(controller, len, "%s", best_name);
+
 	return true;
 }
 
@@ -927,7 +923,7 @@ bool light_ctrl_set_cap_min(char const *controller, unsigned long val)
 
 bool light_ctrl_list(void)
 {
-	char controller[NAME_MAX + 1];
+	char controller[NAME_MAX];
 	bool found = false;
 	DIR *dir;
 
@@ -936,7 +932,7 @@ bool light_ctrl_list(void)
 		return false;
 	}
 
-	while (light_ctrl_iterate(dir, controller)) {
+	while (light_ctrl_iterate(dir, controller, sizeof(controller))) {
 		printf("%s\n", controller);
 		found = true;
 	}
