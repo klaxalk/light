@@ -303,10 +303,15 @@ bool light_initialize(int argc, char **argv)
 	int rc;
 
 	/* Classic SUID root mode or new user based cache files */
-	if (geteuid() == 0)
+	if (geteuid() == 0) {
 		snprintf(ctx.prefix, sizeof(ctx.prefix), "%s", "/etc/light");
-	else
-		snprintf(ctx.prefix, sizeof(ctx.prefix), "%s/.cache/light", getenv("HOME"));
+	} else {
+		char *xdg_cache = getenv("XDG_CACHE_HOME");
+		if (xdg_cache != NULL)
+			snprintf(ctx.prefix, sizeof(ctx.prefix), "%s/light", xdg_cache);
+		else
+			snprintf(ctx.prefix, sizeof(ctx.prefix), "%s/.cache/light", getenv("HOME"));
+	}
 
 	light_defaults();
 	if (!light_parse_args(argc, argv)) {
