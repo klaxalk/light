@@ -1,105 +1,166 @@
-#ifndef LIGHT_H_
-#define LIGHT_H_
+
+#pragma once
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <limits.h> // NAME_MAX
+#include <stddef.h> // NULL
 
 #include "config.h"
-#include "helpers.h"
 
-#include <stdbool.h>
-#include <sys/types.h>
-#include <dirent.h>
-#include <linux/limits.h>
-
-#define LIGHT_YEAR   "2012-2018"
+#define LIGHT_YEAR   "2012 - 2018"
 #define LIGHT_AUTHOR "Fredrik Haikarainen"
 
-#define ASSERT_SET(t, v)						\
-	if (v) {							\
-		fprintf(stderr, t " cannot be used more than once.\n"); \
-		return false;						\
-	}								\
-	v = true;
+struct _light_device_target_t;
+typedef struct _light_device_target_t light_device_target_t;
 
-#define ASSERT_CMDSET()    ASSERT_SET("Commands", cmd_set)
-#define ASSERT_TARGETSET() ASSERT_SET("Targets", target_set)
-#define ASSERT_FIELDSET()  ASSERT_SET("Fields", field_set)
-#define ASSERT_CTRLSET()   ASSERT_SET("Controllers", ctrl_set)
-#define ASSERT_VALSET()    ASSERT_SET("Values", val_set)
+struct _light_device_t;
+typedef struct _light_device_t light_device_t;
 
-typedef enum {
-	LIGHT_BRIGHTNESS = 0,
-	LIGHT_MAX_BRIGHTNESS,
-	LIGHT_MIN_CAP,
-	LIGHT_SAVERESTORE
-} light_field_t;
+struct _light_device_enumerator_t;
+typedef struct _light_device_enumerator_t light_device_enumerator_t;
 
-typedef enum {
-	LIGHT_BACKLIGHT = 0,
-	LIGHT_KEYBOARD
-} light_target_t;
+/* Function pointers that implementations have to set for device targets */
+typedef bool (*LFUNCVALSET)(light_device_target_t*, uint64_t);
+typedef bool (*LFUNCVALGET)(light_device_target_t*, uint64_t*);
+typedef bool (*LFUNCMAXVALGET)(light_device_target_t*, uint64_t*);
+typedef bool (*LFUNCCUSTOMCMD)(light_device_target_t*, char const *);
 
-typedef enum {
-	LIGHT_AUTO = 0,
-	LIGHT_SPECIFY
-} light_ctrl_mode_t;
+/* Describes a target within a device (for example a led on a keyboard, or a controller for a backlight) */
+struct _light_device_target_t
+{
+	char           name[256];
+	LFUNCVALSET    set_value;
+	LFUNCVALGET    get_value;
+	LFUNCMAXVALGET get_max_value;
+	LFUNCCUSTOMCMD custom_command;
+	void           *device_target_data;
+	light_device_t *device;
+};
 
-typedef enum {
-	LIGHT_GET = 0,
-	LIGHT_SET,
-	LIGHT_ADD,
-	LIGHT_SUB,
-	LIGHT_PRINT_HELP,	/* Prints help and exits  */
-	LIGHT_PRINT_VERSION,	/* Prints version info and exits */
-	LIGHT_LIST_CTRL,
-	LIGHT_RESTORE,
-	LIGHT_SAVE
-} light_cmd_t;
 
-typedef enum {
-	LIGHT_RAW = 0,
-	LIGHT_PERCENT
-} light_val_mode_t;
+/* Describes a device (a backlight, a keyboard, a led-strip) */
+struct _light_device_t
+{
+	char                  name[256];
+	light_device_target_t **targets;
+	uint64_t              num_targets;
+	void                  *device_data;
+	light_device_enumerator_t *enumerator;
+};
 
-typedef struct {
-	/* Cache file prefix */
-	char               prefix[NAME_MAX];
 
-	/* Which controller to use */
-	light_ctrl_mode_t  ctrl;
-	char               ctrl_name[NAME_MAX + 1];
+typedef bool (*LFUNCENUMINIT)(light_device_enumerator_t*);
+typedef bool (*LFUNCENUMFREE)(light_device_enumerator_t*);
 
-	/* What to do with the controller */
-	light_cmd_t        cmd;
-	light_val_mode_t   val_mode;
-	unsigned long      val_raw;	/* The specified value in raw mode */
-	double             val_percent;	/* The specified value in percent */
+/* An enumerator that is responsible for creating and freeing devices as well as their targets */
+struct _light_device_enumerator_t
+{
+	char          name[256];
+	LFUNCENUMINIT init;
+	LFUNCENUMFREE free;
 
-	light_target_t     target;
-	light_field_t      field;
+	light_device_t **devices;
+	uint64_t num_devices;
+};
 
-	/* Cache data */
-	bool               has_cached_brightness_max;
-	unsigned long      cached_brightness_max;
-} light_ctx_t;
+typedef struct _light_context_t light_context_t;
 
-/* -- Global variable holding the settings for the current run -- */
-light_ctx_t ctx;
+// A command that can be run (set, get, add, subtract, print help, print version, list devices etc.)
+typedef bool (*LFUNCCOMMAND)(light_context_t *);
 
-bool light_initialize              (int argc, char **argv);
-bool light_execute                 (void);
-void light_free                    (void);
 
-bool light_ctrl_list               (void);
-bool light_ctrl_probe              (char *controller, size_t len);
-bool light_ctrl_exist              (char const *controller);
+/*
+	Options
+	v		Specify verbosity, defaults to o
+	s		Specify target, defaults to sysfs/backlight/auto
+	r		Use raw values instead of percentage
+	
+	Operations
+	H,h 	Print help and exit
+	V		Print version and exit
+	L		List devices
+	
+	G		Get brigthness 
+	M		Get max brightness
+	N		Set minimum cap
+	P		Get minimum cap
+	S		Set brigthness
+	
+	A		Increase brightness
+	U		Decrease brightness
+	O		Save brightness
+	I		Restore brightness
+ */
 
-bool light_ctrl_get_brightness     (char const *controller, unsigned long *v);
-bool light_ctrl_set_brightness     (char const *controller, unsigned long v);
-bool light_ctrl_get_brightness_max (char const *controller, unsigned long *v);
+// The different available commands
+bool light_cmd_print_help(light_context_t *ctx); // H,h 
+bool light_cmd_print_version(light_context_t *ctx); // V
+bool light_cmd_list_devices(light_context_t *ctx); // L
+bool light_cmd_set_brightness(light_context_t *ctx); // S
+bool light_cmd_get_brightness(light_context_t *ctx); // G
+bool light_cmd_get_max_brightness(light_context_t *ctx); // M
+bool light_cmd_set_min_brightness(light_context_t *ctx); // N
+bool light_cmd_get_min_brightness(light_context_t *ctx); // P
+bool light_cmd_add_brightness(light_context_t *ctx); // A
+bool light_cmd_sub_brightness(light_context_t *ctx); // U
+bool light_cmd_save_brightness(light_context_t *ctx); // O
+bool light_cmd_restore_brightness(light_context_t *ctx); // I
 
-bool light_ctrl_get_cap_min        (char const *controller, bool *hasMinCap, unsigned long *minCap);
-bool light_ctrl_set_cap_min        (char const *controller, unsigned long val);
 
-bool light_ctrl_save_brightness    (char const *controller, unsigned long val);
-bool light_ctrl_restore_brightness (char const *controller);
+// CONFDIR/targets/<enumerator>/<device>/<target>/ minimum|saved
 
-#endif /* LIGHT_H_ */
+struct _light_context_t
+{
+	struct 
+	{
+		LFUNCCOMMAND			command; // What command was issued 
+		uint64_t				value; // The input value, in raw mode
+		bool					raw_mode; // Whether or not we use raw or percentage mode
+		light_device_target_t	*device_target; // The device target to act on
+	} run_params;
+
+	struct
+	{
+		char					conf_dir[NAME_MAX]; // The path to the application cache directory 
+	} sys_params;
+	
+	light_device_enumerator_t **enumerators;
+	uint64_t num_enumerators;
+
+};
+
+/* Initializes the application, given the command-line. Returns a context. */
+light_context_t* light_initialize(int argc, char **argv);
+
+/* Executes the given context. Returns true on success, false on failure. */
+bool light_execute(light_context_t*);
+
+/* Frees the given context */
+void light_free(light_context_t*);
+
+/* Create a device enumerator in the given context */
+light_device_enumerator_t * light_create_enumerator(light_context_t *ctx, char const * name, LFUNCENUMINIT, LFUNCENUMFREE);
+
+/* Initializes all the device enumerators (and its devices, targets) */
+bool light_init_enumerators(light_context_t *ctx);
+
+/* Frees all the device enumerators (and its devices, targets) */
+bool light_free_enumerators(light_context_t *ctx);
+
+void light_add_enumerator_device(light_device_enumerator_t *enumerator, light_device_t *new_device);
+
+void light_add_device_target(light_device_t *device, light_device_target_t *new_target);
+
+typedef struct _light_target_path_t light_target_path_t;
+struct _light_target_path_t 
+{
+	char enumerator[NAME_MAX];
+	char device[NAME_MAX];
+	char target[NAME_MAX];
+};
+
+bool light_split_target_path(char const * in_path, light_target_path_t *out_path);
+
+/* Returns the found device target, or null. Name should be enumerator/device/target */
+light_device_target_t* light_find_device_target(light_context_t *ctx, char const * name);
