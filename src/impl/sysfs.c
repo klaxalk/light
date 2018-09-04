@@ -169,27 +169,21 @@ bool impl_sysfs_free(light_device_enumerator_t *enumerator)
             continue;
         }
         
-        // If the given device has a targets array that isnt NULL, iterate through it to free the targets, then free the array
-        if(curr_device->targets != NULL)
+        for(uint64_t t = 0; t < curr_device->num_targets; t++)
         {
-            for(uint64_t t = 0; t < curr_device->num_targets; t++)
+            light_device_target_t *curr_target = curr_device->targets[t];
+            
+            if(curr_target == NULL)
             {
-                light_device_target_t *curr_target = curr_device->targets[t];
-                
-                if(curr_target == NULL)
-                {
-                    continue;
-                }
-                
-                if(curr_target->device_target_data != NULL)
-                {
-                    free(curr_target->device_target_data);
-                }
-                
-                free(curr_target);
+                continue;
             }
             
-            free(curr_device->targets);
+            if(curr_target->device_target_data != NULL)
+            {
+                free(curr_target->device_target_data);
+            }
+            
+            free(curr_target);
         }
         
         // If the given device has any device_data, free it
@@ -197,15 +191,12 @@ bool impl_sysfs_free(light_device_enumerator_t *enumerator)
         {
             free(curr_device->device_data);
         }
-        
+                
+        light_dispose_device(curr_device);    
+
         // Free the device
         free(curr_device);
     }
-    
-    // Free the devices array
-    free(enumerator->devices);
-    enumerator->devices = NULL;
-    enumerator->num_devices = 0;
     
     return true;
 }

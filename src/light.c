@@ -473,6 +473,17 @@ bool light_init_enumerators(light_context_t *ctx)
     return success;
 }
 
+void light_dispose_device(light_device_t *device)
+{
+    if(device->targets != NULL)
+    {
+        free(device->targets);
+        device->targets = NULL;
+    }
+    
+    device->num_targets = 0;
+}
+
 bool light_free_enumerators(light_context_t *ctx)
 {
     bool success = true;
@@ -483,6 +494,13 @@ bool light_free_enumerators(light_context_t *ctx)
         {
             success = false;
         }
+        
+        if(curr_enumerator->devices != NULL)
+        {
+            free(curr_enumerator->devices);
+            curr_enumerator->devices = NULL;
+        }
+        
         free(curr_enumerator);
     }
     

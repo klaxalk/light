@@ -135,3 +135,6 @@ bool light_split_target_path(char const * in_path, light_target_path_t *out_path
 
 /* Returns the found device target, or null. Name should be enumerator/device/target */
 light_device_target_t* light_find_device_target(light_context_t *ctx, char const * name);
+
+/* Frees any runtime-allocated data inside a device. Call this before you free a device. */
+void light_dispose_device(light_device_t *device);
