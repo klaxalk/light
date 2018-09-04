@@ -697,7 +697,7 @@ bool light_cmd_get_brightness(light_context_t *ctx)
     
     if(ctx->run_params.raw_mode)
     {
-        printf(PRIu64 "\n", value);
+        printf("%" PRIu64 "\n", value);
     }
     else 
     {
@@ -735,7 +735,7 @@ bool light_cmd_get_max_brightness(light_context_t *ctx)
         return false;
     }
     
-    printf(PRIu64 "\n", max_value);
+    printf("%" PRIu64 "\n", max_value);
     return true;
 }
 
@@ -786,7 +786,7 @@ bool light_cmd_get_min_brightness(light_context_t *ctx)
     
     if(ctx->run_params.raw_mode)
     {
-        printf(PRIu64 "\n", minimum_value);
+        printf("%" PRIu64 "\n", minimum_value);
     }
     else 
     {
