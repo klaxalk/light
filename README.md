@@ -1,11 +1,11 @@
-Light - A Program to Control Backlight Controllers
+Light - A program to control backlights (and other hardware lights) in GNU/Linux
 ==================================================
 
 - [Introduction](#introduction)
 - [Examples](#examples)
 - [Usage](#usage)
-  - [Commands](#commands)
-  - [Options](#options)
+  - [Command options](#command-options)
+  - [Extra options](#extra-options)
 - [Installation](#installation)
   - [Arch Linux](#arch-linux)
   - [Fedora](#fedora)
@@ -17,25 +17,22 @@ Light - A Program to Control Backlight Controllers
 Introduction
 ------------
 
-[Light][] is a program to control backlight controllers under GNU/Linux:
+[Light][] is a program to control backlights and other lights under GNU/Linux:
 
-* Works, in particular when other software, e.g. xbacklight, does not
-* Does not rely on X
-* Automatically detects the best controller
-* Possibility to set a minimum brightness value
+* Works where other software has proven unreliable (xbacklight etc.)
+* Works even in a fully CLI-environment, i.e. it does not rely on X
+* Provides functionality to automatically control backlights with the highest precision available
+* Extra features, like setting a minimum brightness value for controllers, or saving/restoring the value for poweroffs/boots.
 
-Let's get started with a few examples!  See the following sections for
-the detailed descriptions of all available commands, options and how to
-access different controllers.
+See the following sections for the detailed descriptions of all available commands, options and how to access different controllers.
 
-Light is available in many GNU/Linux distributions already, and it also
-has a fork called [brillo][] by [Cameron Nemo](@CameronNemo).
+Light is available in many GNU/Linux distributions already.
 
 
 Examples
 --------
 
-Get the current brightness in percent
+Get the current backlight brightness in percent
 
     light -G
 
@@ -43,99 +40,58 @@ or
 
      light
 
-Increase brightness by 5 percent
+Increase backlight brightness by 5 percent
 
     light -A 5
 
-Set the minimum cap to 2 in raw value on the acpi_video0 controller:
+Set the minimum cap to 2 in raw value on the sysfs/backlight/acpi_video0 device:
 
-    light -cr -s acpi_video0 -S 2
+    light -Nrs "sysfs/backlight/acpi_video0" 2
 
-Try to set the brightness to 0 after that, it will be changed to the
-minimum 2:
+List available devices
 
-    light -r -s acpi_video0 -S 0
+    light -L
 
-Find keyboard controllers:
-
-    light -k -L
-
-Activate `ScrollLock` LED, here `input15` is used, but this varies
+Activate the Num. Lock keyboard LED, here `sysfs/leds/input3::numlock` is used, but this varies
 between different systems:
 
-    light -k -s "input15::scrolllock" -S 100
-
-Usually, LEDs only take 0 or 1 in raw value (i.e. for off/on), so you
-can instead write:
-
-    light -kr -s "input15::scrolllock" -S 1
-
-Verify by reading back the max brightness, you should get a value of 1:
-
-    light -kr -m -s "input15::scrolllock
+    light -Srs "sysfs/leds/input3::numlock" 1
 
 
 Usage
 -----
 
-### Commands
+Usage follows the following pattern, where options are optional and the neccesity of value depends on the options used
+    
+    light [options] <value>
 
-* `-G`: Get (read) brightness/data from controllers/files
-* `-S VAL`: Set (write)brightness/data to controllers/files
-* `-A VAL`: Like `-S`, but adds the given value
-* `-U VAL`: Like `-S`, but subtracts the given value
-* `-O`: Save the current brightness for later use (usually used on shutdown)
-* `-I`: Restore the previously saved brightness (usually used on boot)
-* `-L`: List available controllers, see below `-k` option as well
+### Command options
 
-Without any options (below) the commands operate on the brightness of an
-automatically selected controller.  Values are given in percent, unless
-the below `r` option is also given.
+You may only specify one command flag at a time. These flags decide what the program will ultimately end up doing.
 
-**Note:** like most UNIX applications, light only gives output on
-  errors.  If something goes wrong try the verbosity option `-v VAL`:
+*  `-H` Show help and exit
+*  `-V` Show program version and exit
+*  `-L` List available devices
+*  `-A` Increase brightness by value (value needed!)
+*  `-U` Decrease brightness by value (value needed!)
+*  `-S` Set brightness to value (value needed!)
+*  `-G` Get brightness
+*  `-N` Set minimum brightness to value (value needed!)
+*  `-P` Get minimum brightness
+*  `-I` Save the current brightness
+*  `-O` Restore the previously saved brightness
 
-* 0: No debug output
-* 1: Errors
-* 2: Errors, warnings
-* 3: Errors, warnings, notices
+Without any extra options, the command will operate on the device called `sysfs/backlight/auto`, which works as it's own device however it proxies the backlight device that has the highest controller resolution (read: highest precision). Values are interpreted and printed as percentage between 0.0 - 100.0.
 
-### Options
+**Note:** If something goes wrong, you can find out by maxing out the verbosity flag by passing `-v 3` to the options. This will activate the logging of warnings, errors and notices. Light will never print these by default, as it is designed to primarily interface with other applications and not humanbeings directly.
 
-Values may be given, or presented, in percent or raw mode.  Raw mode is
-the format specific to the controller.  The default is in percent, but
-raw mode may be required for precise control, or when the steps are very
-few, e.g. for most keyboard backlight controllers.
+### Extra options
 
-* `-p`: Percent, default
-* `-r`: Raw mode
+These can be mixed, combined and matched after convenience. 
 
-By default the screen is the active target for all commands, use `-k` to
-select the keyboard instead.  In either case you may need to select a
-different controller, see below.
-
-* `-l`: Act on screen backlight, default
-* `-k`: Act on keyboard backlight and LEDs
-
-By default commands act on the brightness property, which is read+write.
-The maximum brightness is a read-only property.  The minimum brightness
-cap is a feature implemented to protect against setting brightness too
-low, since some controllers make the screen go pitch black at 0%.  For
-controllers like that it is recommended to set this value.
-
-* `-b`: Current brightness of selected controller, default
-* `-m`: Max. brightness of selected controller
-* `-c`: Min. brightness (cap) of selected controller (recommend raw mode)
-
-Controller is automatically done to select the controller with maximum
-precision.  It can however also be done manually and we recommend the
-`-L` and `-Lk` commands to list available controllers:
-
-* `-a`: Automatic controller selection
-* `-s ARG`: Manual controller selection
-
-**Note:** Without the `-s` flag on _every_ command light will default
-  to automatic controller selection.
+* `-r` Raw mode, values (printed and interpreted from commandline) will be treated as integers in the controllers native range, instead of in percent.
+* `-v <verbosity>` Specifies the verbosity level. 0 is default and prints nothing. 1 prints only errors, 2 prints only errors and warnings, and 3 prints both errors, warnings and notices.
+* `-s <devicepath>` Specifies which device to work on. List available devices with the -L command. Full path is needed.
 
 
 Installation
@@ -145,11 +101,8 @@ Installation
 
 If you run Arch Linux, there exists 2 packages;
 
-* [light-git][] - For the absolutely latest version
-* [light-tag][] - For the latest tagged release
-
-We recommend you go with light-git as you might miss important features
-and bugfixes if you do not.
+* [light-git][] - For the latest development branch (master)
+* [light][] - For the latest stable release
 
 
 ### Fedora
@@ -163,17 +116,15 @@ and you're good to go.
 
 ### Manual
 
-We recommended downloading a versioned tarball from the relases page on
-GitHub.  Download and untar the archive:
+If you download a stable release, these are the commands that will get you up and running:
 
     tar xf light-x.yy.tar.gz
     cd light-x.yy/
     ./configure && make
     sudo make install
 
-However, should you want to try the latest GitHub source you first need
-to clone the repository and run the `autogen.sh` script.  This requires
-`automake` and `autoconf` to be installed on your system.
+However the latest development branch requires some extras. Clone the repository and run the `autogen.sh` script.  This requires that
+`automake` and `autoconf` is installed on your system.
 
     ./autogen.sh
     ./configure && make
@@ -209,6 +160,5 @@ This is free software, see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
 
 [Light]:     https://github.com/haikarainen/light/
-[brillo]:    https://gitlab.com/cameronnemo/brillo/
 [light-git]: https://aur.archlinux.org/packages/light-git
-[light-tag]: https://aur.archlinux.org/packages/light
+[light]: https://aur.archlinux.org/packages/light
