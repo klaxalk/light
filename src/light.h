@@ -29,24 +29,23 @@ typedef bool (*LFUNCCUSTOMCMD)(light_device_target_t*, char const *);
 /* Describes a target within a device (for example a led on a keyboard, or a controller for a backlight) */
 struct _light_device_target_t
 {
-	char           name[256];
-	LFUNCVALSET    set_value;
-	LFUNCVALGET    get_value;
-	LFUNCMAXVALGET get_max_value;
-	LFUNCCUSTOMCMD custom_command;
-	void           *device_target_data;
-	light_device_t *device;
+    char           name[256];
+    LFUNCVALSET    set_value;
+    LFUNCVALGET    get_value;
+    LFUNCMAXVALGET get_max_value;
+    LFUNCCUSTOMCMD custom_command;
+    void           *device_target_data;
+    light_device_t *device;
 };
-
 
 /* Describes a device (a backlight, a keyboard, a led-strip) */
 struct _light_device_t
 {
-	char                  name[256];
-	light_device_target_t **targets;
-	uint64_t              num_targets;
-	void                  *device_data;
-	light_device_enumerator_t *enumerator;
+    char                  name[256];
+    light_device_target_t **targets;
+    uint64_t              num_targets;
+    void                  *device_data;
+    light_device_enumerator_t *enumerator;
 };
 
 
@@ -56,12 +55,12 @@ typedef bool (*LFUNCENUMFREE)(light_device_enumerator_t*);
 /* An enumerator that is responsible for creating and freeing devices as well as their targets */
 struct _light_device_enumerator_t
 {
-	char          name[256];
-	LFUNCENUMINIT init;
-	LFUNCENUMFREE free;
+    char            name[256];
+    LFUNCENUMINIT   init;
+    LFUNCENUMFREE   free;
 
-	light_device_t **devices;
-	uint64_t num_devices;
+    light_device_t  **devices;
+    uint64_t        num_devices;
 };
 
 typedef struct _light_context_t light_context_t;
@@ -69,29 +68,24 @@ typedef struct _light_context_t light_context_t;
 // A command that can be run (set, get, add, subtract, print help, print version, list devices etc.)
 typedef bool (*LFUNCCOMMAND)(light_context_t *);
 
+struct _light_context_t
+{
+    struct 
+    {
+        LFUNCCOMMAND            command; // What command was issued 
+        uint64_t                value; // The input value, in raw mode
+        bool                    raw_mode; // Whether or not we use raw or percentage mode
+        light_device_target_t   *device_target; // The device target to act on
+    } run_params;
 
-/*
-	Options
-	v		Specify verbosity, defaults to o
-	s		Specify target, defaults to sysfs/backlight/auto
-	r		Use raw values instead of percentage
-	
-	Operations
-	H,h 	Print help and exit
-	V		Print version and exit
-	L		List devices
-	
-	G		Get brigthness 
-	M		Get max brightness
-	N		Set minimum cap
-	P		Get minimum cap
-	S		Set brigthness
-	
-	A		Increase brightness
-	U		Decrease brightness
-	O		Save brightness
-	I		Restore brightness
- */
+    struct
+    {
+        char                    conf_dir[NAME_MAX]; // The path to the application cache directory 
+    } sys_params;
+    
+    light_device_enumerator_t   **enumerators;
+    uint64_t                    num_enumerators;
+};
 
 // The different available commands
 bool light_cmd_print_help(light_context_t *ctx); // H,h 
@@ -106,29 +100,6 @@ bool light_cmd_add_brightness(light_context_t *ctx); // A
 bool light_cmd_sub_brightness(light_context_t *ctx); // U
 bool light_cmd_save_brightness(light_context_t *ctx); // O
 bool light_cmd_restore_brightness(light_context_t *ctx); // I
-
-
-// CONFDIR/targets/<enumerator>/<device>/<target>/ minimum|saved
-
-struct _light_context_t
-{
-	struct 
-	{
-		LFUNCCOMMAND			command; // What command was issued 
-		uint64_t				value; // The input value, in raw mode
-		bool					raw_mode; // Whether or not we use raw or percentage mode
-		light_device_target_t	*device_target; // The device target to act on
-	} run_params;
-
-	struct
-	{
-		char					conf_dir[NAME_MAX]; // The path to the application cache directory 
-	} sys_params;
-	
-	light_device_enumerator_t **enumerators;
-	uint64_t num_enumerators;
-
-};
 
 /* Initializes the application, given the command-line. Returns a context. */
 light_context_t* light_initialize(int argc, char **argv);
@@ -155,9 +126,9 @@ void light_add_device_target(light_device_t *device, light_device_target_t *new_
 typedef struct _light_target_path_t light_target_path_t;
 struct _light_target_path_t 
 {
-	char enumerator[NAME_MAX];
-	char device[NAME_MAX];
-	char target[NAME_MAX];
+    char enumerator[NAME_MAX];
+    char device[NAME_MAX];
+    char target[NAME_MAX];
 };
 
 bool light_split_target_path(char const * in_path, light_target_path_t *out_path);

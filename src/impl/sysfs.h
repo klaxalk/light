@@ -7,10 +7,13 @@
 // Enumerates devices for backlights and leds
 
 // Device target data 
-typedef struct {
-	char brightness[NAME_MAX];
-	char max_brightness[NAME_MAX];
-} impl_sysfs_data_t;
+struct _impl_sysfs_data_t
+{
+    char brightness[NAME_MAX];
+    char max_brightness[NAME_MAX];
+};
+
+typedef struct _impl_sysfs_data_t impl_sysfs_data_t;
 
 bool impl_sysfs_init(light_device_enumerator_t *enumerator);
 bool impl_sysfs_free(light_device_enumerator_t *enumerator);
