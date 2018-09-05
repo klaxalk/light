@@ -119,9 +119,17 @@ bool light_init_enumerators(light_context_t *ctx);
 /* Frees all the device enumerators (and its devices, targets) */
 bool light_free_enumerators(light_context_t *ctx);
 
-void light_add_enumerator_device(light_device_enumerator_t *enumerator, light_device_t *new_device);
+/* Use this to create a device. Will automatically be added to enumerator. */
+light_device_t *light_create_device(light_device_enumerator_t *enumerator, char const *name, void *device_data);
 
-void light_add_device_target(light_device_t *device, light_device_target_t *new_target);
+/* Use this to delete a device. */
+void light_delete_device(light_device_t *device);
+
+/* Use this to create a device target. Will automatically be added to device. */
+light_device_target_t *light_create_device_target(light_device_t *device, char const *name, LFUNCVALSET setfunc, LFUNCVALGET getfunc, LFUNCMAXVALGET getmaxfunc, LFUNCCUSTOMCMD cmdfunc, void *target_data);
+
+/* Use this to delete a device target. */
+void light_delete_device_target(light_device_target_t *device_target);
 
 typedef struct _light_target_path_t light_target_path_t;
 struct _light_target_path_t 
@@ -136,5 +144,3 @@ bool light_split_target_path(char const * in_path, light_target_path_t *out_path
 /* Returns the found device target, or null. Name should be enumerator/device/target */
 light_device_target_t* light_find_device_target(light_context_t *ctx, char const * name);
 
-/* Frees any runtime-allocated data inside a device. Call this before you free a device. */
-void light_dispose_device(light_device_t *device);

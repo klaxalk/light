@@ -16,6 +16,59 @@
 
 /* Static helper functions for this file only, prefix with _ */
 
+
+static void _light_add_enumerator_device(light_device_enumerator_t *enumerator, light_device_t *new_device)
+{
+    // Create a new device array 
+    uint64_t new_num_devices = enumerator->num_devices + 1;
+    light_device_t **new_devices = malloc(new_num_devices * sizeof(light_device_t*));
+    
+    // Copy old device array to new one
+    for(uint64_t i = 0; i < enumerator->num_devices; i++)
+    {
+        new_devices[i] = enumerator->devices[i];
+    }
+    
+    // Set the new device
+    new_devices[enumerator->num_devices] = new_device;
+    
+    // Free the old devices array, if needed
+    if(enumerator->devices != NULL)
+    {
+        free(enumerator->devices);
+    }
+    
+    // Replace the devices array with the new one
+    enumerator->devices = new_devices;
+    enumerator->num_devices = new_num_devices;
+}
+
+static void _light_add_device_target(light_device_t *device, light_device_target_t *new_target)
+{
+    // Create a new targets array 
+    uint64_t new_num_targets = device->num_targets + 1;
+    light_device_target_t **new_targets = malloc(new_num_targets * sizeof(light_device_target_t*));
+    
+    // Copy old targets array to new one
+    for(uint64_t i = 0; i < device->num_targets; i++)
+    {
+        new_targets[i] = device->targets[i];
+    }
+    
+    // Set the new target
+    new_targets[device->num_targets] = new_target;
+    
+    // Free the old targets array, if needed
+    if(device->targets != NULL)
+    {
+        free(device->targets);
+    }
+    
+    // Replace the targets array with the new one
+    device->targets= new_targets;
+    device->num_targets = new_num_targets;
+}
+
 static void _light_get_target_path(light_context_t* ctx, char* output_path, size_t output_size)
 {
     snprintf(output_path, output_size,
@@ -38,7 +91,6 @@ static void _light_get_target_file(light_context_t* ctx, char* output_path, size
                 file
             );
 }
-
 
 static uint64_t _light_get_min_cap(light_context_t *ctx)
 {
@@ -435,7 +487,7 @@ light_device_enumerator_t * light_create_enumerator(light_context_t *ctx, char c
     }
     
     // Allocate the new enumerator
-    new_enumerators[ctx->num_enumerators] = malloc(sizeof(light_device_enumerator_t*));
+    new_enumerators[ctx->num_enumerators] = malloc(sizeof(light_device_enumerator_t));
     light_device_enumerator_t *returner = new_enumerators[ctx->num_enumerators];
     
     returner->devices = NULL;
@@ -473,23 +525,13 @@ bool light_init_enumerators(light_context_t *ctx)
     return success;
 }
 
-void light_dispose_device(light_device_t *device)
-{
-    if(device->targets != NULL)
-    {
-        free(device->targets);
-        device->targets = NULL;
-    }
-    
-    device->num_targets = 0;
-}
-
 bool light_free_enumerators(light_context_t *ctx)
 {
     bool success = true;
     for(uint64_t i = 0; i < ctx->num_enumerators; i++)
     {
         light_device_enumerator_t * curr_enumerator = ctx->enumerators[i];
+        
         if(!curr_enumerator->free(curr_enumerator))
         {
             success = false;
@@ -497,6 +539,11 @@ bool light_free_enumerators(light_context_t *ctx)
         
         if(curr_enumerator->devices != NULL)
         {
+            for(uint64_t d = 0; d < curr_enumerator->num_devices; d++)
+            {
+                light_delete_device(curr_enumerator->devices[d]);
+            }
+            
             free(curr_enumerator->devices);
             curr_enumerator->devices = NULL;
         }
@@ -510,63 +557,6 @@ bool light_free_enumerators(light_context_t *ctx)
     
     return success;
 }
-
-void light_add_enumerator_device(light_device_enumerator_t *enumerator, light_device_t *new_device)
-{
-    // Create a new device array 
-    uint64_t new_num_devices = enumerator->num_devices + 1;
-    light_device_t **new_devices = malloc(new_num_devices * sizeof(light_device_t*));
-    
-    // Copy old device array to new one
-    for(uint64_t i = 0; i < enumerator->num_devices; i++)
-    {
-        new_devices[i] = enumerator->devices[i];
-    }
-    
-    // Set the new device
-    new_devices[enumerator->num_devices] = new_device;
-    
-    // Free the old devices array, if needed
-    if(enumerator->devices != NULL)
-    {
-        free(enumerator->devices);
-    }
-    
-    // Replace the devices array with the new one
-    enumerator->devices = new_devices;
-    enumerator->num_devices = new_num_devices;
-    
-    new_device->enumerator = enumerator;
-}
-
-void light_add_device_target(light_device_t *device, light_device_target_t *new_target)
-{
-    // Create a new targets array 
-    uint64_t new_num_targets = device->num_targets + 1;
-    light_device_target_t **new_targets = malloc(new_num_targets * sizeof(light_device_target_t*));
-    
-    // Copy old targets array to new one
-    for(uint64_t i = 0; i < device->num_targets; i++)
-    {
-        new_targets[i] = device->targets[i];
-    }
-    
-    // Set the new target
-    new_targets[device->num_targets] = new_target;
-    
-    // Free the old targets array, if needed
-    if(device->targets != NULL)
-    {
-        free(device->targets);
-    }
-    
-    // Replace the targets array with the new one
-    device->targets= new_targets;
-    device->num_targets = new_num_targets;
-    
-    new_target->device = device;
-}
-
 
 bool light_split_target_path(char const *in_path, light_target_path_t *out_path)
 {
@@ -966,6 +956,64 @@ bool light_cmd_restore_brightness(light_context_t *ctx)
     return true;
 }
 
+light_device_t *light_create_device(light_device_enumerator_t *enumerator, char const *name, void *device_data)
+{
+    light_device_t *new_device = malloc(sizeof(light_device_t));
+    new_device->enumerator = enumerator;
+    new_device->targets = NULL;
+    new_device->num_targets = 0;
+    new_device->device_data = device_data;
+    
+    snprintf(new_device->name, sizeof(new_device->name), "%s", name);
+    
+    _light_add_enumerator_device(enumerator, new_device);
+    
+    return new_device;
+}
 
+void light_delete_device(light_device_t *device)
+{
+    for(uint64_t i = 0; i < device->num_targets; i++)
+    {
+        light_delete_device_target(device->targets[i]);
+    }
+    
+    if(device->targets != NULL)
+    {
+        free(device->targets);
+    }
+    
+    if(device->device_data != NULL)
+    {
+        free(device->device_data);
+    }
+    
+    free(device);
+}
 
+light_device_target_t *light_create_device_target(light_device_t *device, char const *name, LFUNCVALSET setfunc, LFUNCVALGET getfunc, LFUNCMAXVALGET getmaxfunc, LFUNCCUSTOMCMD cmdfunc, void *target_data)
+{
+    light_device_target_t *new_target = malloc(sizeof(light_device_target_t));
+    new_target->device = device;
+    new_target->set_value = setfunc;
+    new_target->get_value = getfunc;
+    new_target->get_max_value = getmaxfunc;
+    new_target->custom_command = cmdfunc;
+    new_target->device_target_data = target_data;
+    
+    snprintf(new_target->name, sizeof(new_target->name), "%s", name);
+    
+    _light_add_device_target(device, new_target);
+    
+    return new_target;
+}
 
+void light_delete_device_target(light_device_target_t *device_target)
+{
+    if(device_target->device_target_data != NULL)
+    {
+        free(device_target->device_target_data);
+    }
+    
+    free(device_target);
+}

@@ -113,7 +113,7 @@ bool impl_foo_command(light_device_target_t *target, char const *command_string)
 
 In the sourcefile, you need to implement the 6 methods. Make sure to return `true` on success and `false` on failure. If you do not actually implement a function (for example `impl_foo_command`), just return `true`.
 
-The job of the enumerator is to identify/enumerate a bunch of different devices (or just one, or even zero if it doesnt find any). You are also responsible to create the device targets for them (i.e, the things that you actually write to on the device). You do this by setting the devices and targets up in `impl_foo_init` and to free these in `impl_foo_free`. The enumerator (this code) owns the memory of the devices and targets, and thus is in charge of allocating and freeing it. 
+The job of the enumerator is to identify/enumerate a bunch of different devices (or just one, or even zero if it doesnt find any). You are also responsible to create the device targets for them (i.e, the things that you actually write to on the device). You do this by setting the devices and targets up in `impl_foo_init`. You are not required to do anything in `impl_foo_free`, any allocated memory will be automatically free'd by light, including device/target data that you allocate yourself. You may use `impl_foo_free` to free resources you allocate outside of the light API.
 
 ```c
 
@@ -126,83 +126,26 @@ bool impl_foo_init(light_device_enumerator_t *enumerator)
 {
     /* Lets create a single device, with a single target, for simplicity */
     
-    /* Allocate a new device */
-    light_device_t *new_device = malloc(sizeof(light_device_t));
+    /* Create a new device called new_device_name, we dont need any userdata so pass NULL to the device_data parameter */
+    light_device_t *new_device = light_create_device(enumerator, "new_device_name", NULL)
     
-    /* Set the name of the new device to "new_device_name" */
-    snprintf(leds_device->name, sizeof(leds_device->name), "%s", "new_device_name");
-    
-    /* Add the newly created device to the enumerator */
-    light_add_enumerator_device(enumerator, new_device);
-
-    
-    
-    /* Allocate a new device target for the newly created device */
-    light_device_target_t *new_target = malloc(sizeof(light_device_target_t));
-    
-    /* Set the name of the new target */
-    snprintf(new_target->name, sizeof(new_target->name), "%s", "new_target_name");
-    
-    /* Setup the function bindings for this target, i.e. what functions will run internally when you run different commands on this device target */
-    new_target->set_value = impl_foo_set;
-    new_target->get_value = impl_foo_get;
-    new_target->get_max_value = impl_foo_getmax;
-    new_target->custom_command = impl_foo_command;
-    
-    /* Finally add the target to the device */
-    light_add_device_target(new_device, new_target);
-    
-    
-    
-    /* Optional: Setup data specific to either a device or a target, or both. */ 
+    /* Setup userdata specific to the target we will create*/ 
     /* Useful to for example reference an ID in a third-party API or likewise */
+    /* NOTE: The userdata will be free()'d automatically on exit, so you do not need to free it yourself */
     impl_foo_data_t *custom_data = malloc(sizeof(impl_foo_data_t));
     custom_data->internal_quack_id = 333;
     
-    /* You can set it to the device itself, or to a target */
-    new_device->device_data = custom_data;
-    new_target->device_target_data = custom_data;
-
+    
+    /* Create a new device target called new_target_name, and pass in the functions and userdata that we just allocated */
+    light_create_device_target(new_device, "new_target_name", impl_foo_set, impl_foo_get, impl_foo_getmax, impl_foo_command, custom_data)
+    
     /* Return true because we didnt get any errors! */
     return true;
 }
 
 bool impl_foo_free(light_device_enumerator_t *enumerator)
 {
-    /* We are responsible to free the memory we allocated in init, so lets do that */
-    
-    /* Iterate through the devices in the enumerator */
-    for(uint64_t d = 0; d < enumerator->num_devices; d++)
-    {
-        light_device_t *curr_device = enumerator->devices[d];
-
-        /* Iterate throug hthe targets in the device */
-        for(uint64_t t = 0; t < curr_device->num_targets; t++)
-        {
-            light_device_target_t *curr_target = curr_device->targets[t];
-            
-            /* If we allocated any target data, free it here */
-            if(curr_target->device_target_data != NULL)
-            {
-                free(curr_target->device_target_data);
-            }
-            
-            free(curr_target);
-        }
-
-        /* If we allocated any device data, free it here */
-        if(curr_device->device_data != NULL)
-        {
-            free(curr_device->device_data);
-        }
-        
-        /* We need to 'dispose' of the device when we are done with it, to free some internal memory. Always do this when you are about to free a device that you allocated. */
-        light_dispose_device(curr_device);
-        
-        /* Free the device */
-        free(curr_device);
-    }
-    
+    /* We dont need to do anything here, but if we want to, we can free some third-party API resources */
     return true;
 }
 
