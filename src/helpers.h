@@ -43,6 +43,7 @@ light_loglevel_t light_loglevel;
 bool light_file_write_uint64   (char const *filename, uint64_t val);
 bool light_file_read_uint64    (char const *filename, uint64_t *val);
 
+bool light_file_exists (char const *filename);
 bool light_file_is_writable (char const *filename);
 bool light_file_is_readable (char const *filename);
 

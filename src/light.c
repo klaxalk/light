@@ -5,7 +5,7 @@
 // The different device implementations
 #include "impl/sysfs.h"
 #include "impl/util.h"
-//#include "impl/razer.h"
+#include "impl/razer.h"
 
 #include <stdlib.h> // malloc, free
 #include <string.h> // strstr
@@ -433,7 +433,7 @@ light_context_t* light_initialize(int argc, char **argv)
     // Create the built-in enumerators
     light_create_enumerator(new_ctx, "sysfs", &impl_sysfs_init, &impl_sysfs_free);
     light_create_enumerator(new_ctx, "util", &impl_util_init, &impl_util_free);
-    //light_create_enumerator(new_ctx, "razer", &impl_razer_init, &impl_razer_free);
+    light_create_enumerator(new_ctx, "razer", &impl_razer_init, &impl_razer_free);
 
     // This is where we would create enumerators from plugins as well
     // 1. Run the plugins get_name() function to get its name

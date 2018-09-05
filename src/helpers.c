@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h> // access
 #include <sys/types.h>
 #include <dirent.h>
 #include <errno.h> // errno
@@ -54,6 +55,11 @@ bool light_file_write_uint64(char const *filename, uint64_t val)
 
     fclose(fp);
     return true;
+}
+
+bool light_file_exists (char const *filename)
+{
+    return access( filename, F_OK ) != -1;
 }
 
 /* Returns true if file is writable, false otherwise */
