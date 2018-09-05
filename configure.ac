@@ -1,5 +1,5 @@
 AC_INIT([light], [1.2-dev], [https://github.com/haikarainen/light/issues])
-AM_INIT_AUTOMAKE([1.11 foreign])
+AM_INIT_AUTOMAKE([1.11 foreign subdir-objects])
 AM_SILENT_RULES([yes])
 
 AC_CONFIG_SRCDIR([src/light.c])

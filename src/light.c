@@ -1,998 +1,971 @@
+
 #include "light.h"
+#include "helpers.h"
 
-#include <libgen.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <getopt.h>
-#include <sys/stat.h>
+// The different device implementations
+#include "impl/sysfs.h"
+//#include "impl/razer.h"
+
+#include <stdlib.h> // malloc, free
+#include <string.h> // strstr
+#include <stdio.h>  // snprintf
+#include <unistd.h>	// geteuid
+#include <sys/types.h> // geteuid
 #include <errno.h>
+#include <inttypes.h> // PRIu64
 
-/* Sets default values for the configuration */
-static void light_defaults(void)
+/* Static helper functions for this file only, prefix with _ */
+
+static void _light_get_target_path(light_context_t* ctx, char* output_path, size_t output_size)
 {
-	ctx.ctrl = LIGHT_AUTO;
-	memset(&ctx.ctrl_name, '\0', NAME_MAX + 1);
-	ctx.cmd = LIGHT_GET;
-	ctx.val_mode = LIGHT_PERCENT;
-	ctx.val_raw = 0;
-	ctx.val_percent = 0.0;
-	ctx.target = LIGHT_BACKLIGHT;
-	ctx.field = LIGHT_BRIGHTNESS;
-	ctx.has_cached_brightness_max = false;
-	ctx.cached_brightness_max = 0;
-	light_loglevel = 0;
+    snprintf(output_path, output_size,
+                "%s/targets/%s/%s/%s",
+                ctx->sys_params.conf_dir,
+                ctx->run_params.device_target->device->enumerator->name,
+                ctx->run_params.device_target->device->name,
+                ctx->run_params.device_target->name
+            );
 }
 
-static bool light_check_ops(void)
+static void _light_get_target_file(light_context_t* ctx, char* output_path, size_t output_size, char const * file)
 {
-	bool valid = true;
-	light_cmd_t op = ctx.cmd;
-
-	/* Nothing to check if we just print info */
-	if (op == LIGHT_PRINT_HELP || op == LIGHT_PRINT_VERSION || op == LIGHT_LIST_CTRL)
-		return true;
-
-	switch (ctx.field) {
-	case LIGHT_BRIGHTNESS:
-		if (op != LIGHT_GET && op != LIGHT_SET &&
-		    op != LIGHT_ADD && op != LIGHT_SUB && op != LIGHT_SAVE && op != LIGHT_RESTORE) {
-			valid = false;
-			fprintf(stderr,
-				"Wrong operation specified for brightness. You can use only -G -S -A or -U\n\n");
-		}
-		break;
-
-	case LIGHT_MAX_BRIGHTNESS:
-		if (op != LIGHT_GET) {
-			valid = false;
-			fprintf(stderr, "Wrong operation specified for max brightness. You can only use -G\n\n");
-		}
-		break;
-
-	case LIGHT_MIN_CAP:
-		if (op != LIGHT_GET && op != LIGHT_SET) {
-			valid = false;
-			fprintf(stderr, "Wrong operation specified for min cap. You can only use -G or -S\n\n");
-		}
-
-	default:
-		break;
-	}
-
-	return valid;
+    snprintf(output_path, output_size,
+                "%s/targets/%s/%s/%s/%s",
+                ctx->sys_params.conf_dir,
+                ctx->run_params.device_target->device->enumerator->name,
+                ctx->run_params.device_target->device->name,
+                ctx->run_params.device_target->name,
+                file
+            );
 }
 
-static bool light_check_ctrl(char const *controller)
+
+static uint64_t _light_get_min_cap(light_context_t *ctx)
 {
-	if (!controller) {
-		LIGHT_WARN("Invalid or missing controller name");
-		return false;
-	}
+    char target_path[NAME_MAX];
+    _light_get_target_file(ctx, target_path, sizeof(target_path), "minimum");
 
-	if (strlen(controller) > NAME_MAX) {
-		LIGHT_WARN("Too long controller name, %s", controller);
-		return false;
-	}
-
-	return true;
+    uint64_t minimum_value = 0;
+    if(!light_file_read_uint64(target_path, &minimum_value))
+    {
+        return 0;
+    }
+    
+    return minimum_value;
 }
 
-/* Prints help regardless of verbosity level */
-static void light_usage(void)
+static light_device_enumerator_t* _light_find_enumerator(light_context_t *ctx, char const *comp)
 {
-	printf("Usage:\n"
-	       "  light [OPTIONS] <COMMAND> [VALUE]\n"
-	       "\n"
-	       "Commands:\n"
-	       "  -A VAL  Add value\n"
-	       "  -G      Get (read) value, default command\n"
-	       "  -H, -h  Show this help and exit\n"
-	       "  -I      Restore brightness\n"
-	       "  -L      List available controllers\n"
-	       "  -O      Save brightness\n"
-	       "  -S VAL  Set (write) value\n"
-	       "  -U VAL  Subtract value\n"
-	       "  -V      Show program version and exit\n"
-	       "\n"
-	       "Options:\n"
-	       "  -a      Automatic controller selection, default\n"
-	       "  -b      Brightness, default\n"
-	       "  -c      Act on minimum cap, only possible to read and set\n"
-	       "  -k      Act on keyboard backlight\n"
-	       "  -l      Act on screen backlight, default\n"
-	       "  -m      Maximum brightness, only possible to read\n"
-	       "  -p      Interpret input, and output, values in percent, default\n"
-	       "  -r      Interpret input, and outpot, values in raw mode\n"
-	       "  -s ARG  Specify controller to use, use -L and -Lk to list available\n"
-	       "  -v ARG  Verbosity level:\n"
-	       "            0: Values only, default\n"
-	       "            1: Values, Errors.\n"
-	       "            2: Values, Errors, Warnings.\n"
-	       "            3: Values, Errors, Warnings, Notices.\n"
-	       "\n");
-
-	printf("Copyright (C) %s  %s\n", LIGHT_YEAR, LIGHT_AUTHOR);
-	printf("This is free software, see the source for copying conditions.  There is NO\n"
-	       "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE\n"
-	       "\n");
+    for(uint64_t e = 0; e < ctx->num_enumerators; e++)
+    {
+        if(strncmp(comp, ctx->enumerators[e]->name, NAME_MAX) == 0)
+        {
+            return ctx->enumerators[e];
+        }
+    }
+    
+    return NULL;
 }
 
-static bool light_parse_args(int argc, char **argv)
+static light_device_t* _light_find_device(light_device_enumerator_t *en, char const *comp)
 {
-	bool cmd_set    = false;
-	bool target_set = false;
-	bool field_set  = false;
-	bool ctrl_set   = false;
-	bool val_set    = false;
-	int loglevel;
-	int val;
-
-	while ((val = getopt(argc, argv, "HhVGSAULIObmclkas:prv:")) != -1) {
-		switch (val) {
-			/* -- Operations -- */
-		case 'H':
-		case 'h':
-			ASSERT_CMDSET();
-			ctx.cmd = LIGHT_PRINT_HELP;
-			break;
-
-		case 'V':
-			ASSERT_CMDSET();
-			ctx.cmd = LIGHT_PRINT_VERSION;
-			break;
-
-		case 'G':
-			ASSERT_CMDSET();
-			ctx.cmd = LIGHT_GET;
-			break;
-
-		case 'S':
-			ASSERT_CMDSET();
-			ctx.cmd = LIGHT_SET;
-			break;
-
-		case 'A':
-			ASSERT_CMDSET();
-			ctx.cmd = LIGHT_ADD;
-			break;
-
-		case 'U':
-			ASSERT_CMDSET();
-			ctx.cmd = LIGHT_SUB;
-			break;
-
-		case 'L':
-			ASSERT_CMDSET();
-			ctx.cmd = LIGHT_LIST_CTRL;
-			break;
-
-		case 'I':
-			ASSERT_CMDSET();
-			ctx.cmd = LIGHT_RESTORE;
-			break;
-
-		case 'O':
-			ASSERT_CMDSET();
-			ctx.cmd = LIGHT_SAVE;
-			break;
-
-			/* -- Targets -- */
-		case 'l':
-			ASSERT_TARGETSET();
-			ctx.target = LIGHT_BACKLIGHT;
-			break;
-
-		case 'k':
-			ASSERT_TARGETSET();
-			ctx.target = LIGHT_KEYBOARD;
-			break;
-
-			/* -- Fields -- */
-		case 'b':
-			ASSERT_FIELDSET();
-			ctx.field = LIGHT_BRIGHTNESS;
-			break;
-
-		case 'm':
-			ASSERT_FIELDSET();
-			ctx.field = LIGHT_MAX_BRIGHTNESS;
-			break;
-
-		case 'c':
-			ASSERT_FIELDSET();
-			ctx.field = LIGHT_MIN_CAP;
-			break;
-
-		case 'a':
-			ASSERT_CTRLSET();
-			ctx.ctrl = LIGHT_AUTO;
-			break;;
-
-		case 's':
-			ASSERT_CTRLSET();
-			ctx.ctrl = LIGHT_SPECIFY;
-			if (!light_check_ctrl(optarg))
-				return false;
-
-			snprintf(ctx.ctrl_name, sizeof(ctx.ctrl_name), "%s", optarg);
-			break;
-
-		case 'p':
-			ASSERT_VALSET();
-			ctx.val_mode = LIGHT_PERCENT;
-			break;
-
-		case 'r':
-			ASSERT_VALSET();
-			ctx.val_mode = LIGHT_RAW;
-			break;
-
-			/* -- Other -- */
-		case 'v':
-			if (sscanf(optarg, "%i", &loglevel) != 1) {
-				fprintf(stderr, "-v ARG is not recognizable.\n\n");
-				light_usage();
-				return false;
-			}
-			if (loglevel < 0 || loglevel > 3) {
-				fprintf(stderr, "-v ARG must be between 0 and 3.\n\n");
-				light_usage();
-				return false;
-			}
-			light_loglevel = (light_loglevel_t)loglevel;
-			break;
-		}
-	}
-
-	if (!light_check_ops()) {
-		light_usage();
-		return false;
-	}
-
-	/* If we need a <value> (for writing), make sure we have it! */
-	if (ctx.cmd == LIGHT_SET ||
-	    ctx.cmd == LIGHT_ADD || ctx.cmd == LIGHT_SUB) {
-		if (argc - optind != 1) {
-			fprintf(stderr, "Light needs an argument for <value>.\n\n");
-			light_usage();
-			return false;
-		}
-
-		if (ctx.val_mode == LIGHT_PERCENT) {
-			if (sscanf(argv[optind], "%lf", &ctx.val_percent) != 1) {
-				fprintf(stderr, "<value> is not specified in a recognizable format.\n\n");
-				light_usage();
-				return false;
-			}
-			ctx.val_percent = light_percent_clamp(ctx.val_percent);
-		} else {
-			if (sscanf(argv[optind], "%lu", &ctx.val_raw) != 1) {
-				fprintf(stderr, "<value> is not specified in a recognizable format.\n\n");
-				light_usage();
-				return false;
-			}
-		}
-
-	}
-
-	return true;
+    for(uint64_t d = 0; d < en->num_devices; d++)
+    {
+        if(strncmp(comp, en->devices[d]->name, NAME_MAX) == 0)
+        {
+            return en->devices[d];
+        }
+    }
+    
+    return NULL;
 }
 
-static int mkpath(char *dir, mode_t mode)
+static light_device_target_t* _light_find_target(light_device_t * dev, char const *comp)
 {
-	struct stat sb;
-
-	if (!dir) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	if (!stat(dir, &sb))
-		return 0;
-
-	mkpath(dirname(strdupa(dir)), mode);
-
-	return mkdir(dir, mode);
+    for(uint64_t t = 0; t < dev->num_targets; t++)
+    {
+        if(strncmp(comp, dev->targets[t]->name, NAME_MAX) == 0)
+        {
+            return dev->targets[t];
+        }
+    }
+    
+    return NULL;
 }
 
-bool light_initialize(int argc, char **argv)
+static bool _light_raw_to_percent(light_device_target_t *target, uint64_t inraw, double *outpercent)
 {
-	light_cmd_t mode;
-	int rc;
-
-	/* Classic SUID root mode or new user based cache files */
-	if (geteuid() == 0) {
-		snprintf(ctx.prefix, sizeof(ctx.prefix), "%s", "/etc/light");
-	} else {
-		char *xdg_cache = getenv("XDG_CACHE_HOME");
-		if (xdg_cache != NULL)
-			snprintf(ctx.prefix, sizeof(ctx.prefix), "%s/light", xdg_cache);
-		else
-			snprintf(ctx.prefix, sizeof(ctx.prefix), "%s/.cache/light", getenv("HOME"));
-	}
-
-	light_defaults();
-	if (!light_parse_args(argc, argv)) {
-		LIGHT_ERR("could not parse arguments");
-		return false;
-	}
-
-	/* Just return true for operation modes that do not need initialization */
-	mode = ctx.cmd;
-	if (mode == LIGHT_PRINT_HELP || mode == LIGHT_PRINT_VERSION || mode == LIGHT_LIST_CTRL)
-		return true;
-
-	/* Make sure we have a valid cache directory for all files */
-	if (mode == LIGHT_SAVE || (mode == LIGHT_SET && ctx.field == LIGHT_MIN_CAP)) {
-		const char *dirs[5] = {
-			"/mincap/kbd", "/save/kbd", NULL
-		};
-		char path[strlen(ctx.prefix) + 20];
-		int i;
-
-		for (i = 0; dirs[i]; i++) {
-			snprintf(path, sizeof(path), "%s%s", ctx.prefix, dirs[i]);
-
-			rc = mkpath(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-			if (rc && errno != EEXIST) {
-				LIGHT_ERR("'%s' does not exist and could not be created,"
-					  " make sure this application is run as root.", path);
-				return false;
-			}
-		}
-	}
-
-	/* Make sure we have a valid controller before we proceed */
-	if (ctx.ctrl == LIGHT_AUTO) {
-		LIGHT_NOTE("Automatic mode -- finding best controller");
-		if (!light_ctrl_probe(ctx.ctrl_name, sizeof(ctx.ctrl_name))) {
-			LIGHT_ERR("could not find suitable controller");
-			return false;
-		}
-	} else if (!light_ctrl_exist(ctx.ctrl_name)) {
-		LIGHT_ERR("selected controller '%s' is not valid", ctx.ctrl_name);
-		return false;
-	}
-
-	return true;
+        double inraw_d = (double)inraw;
+        uint64_t max_value = 0;
+        if(!target->get_max_value(target, &max_value))
+        {
+            LIGHT_ERR("couldn't read from target");
+            return false;
+        }
+        double max_value_d = (double)max_value;
+        double percent = light_percent_clamp((inraw_d / max_value_d) * 100.0);
+        *outpercent = percent;
+        
+        return true;
 }
 
-/* Print help and version info */
-static bool light_info(void)
+static bool _light_percent_to_raw(light_device_target_t *target, double inpercent, uint64_t *outraw)
 {
-	if (ctx.cmd == LIGHT_PRINT_HELP) {
-		light_usage();
-		return true;
-	}
+    uint64_t max_value = 0;
+    if(!target->get_max_value(target, &max_value))
+    {
+        LIGHT_ERR("couldn't read from target");
+        return false;
+    }
 
-	if (ctx.cmd == LIGHT_PRINT_VERSION) {
-		printf("v%s\n", VERSION);
-		return true;
-	}
-
-	if (ctx.cmd == LIGHT_LIST_CTRL) {
-		/* listControllers() can return false, but only if it does not find any controllers. That is not enough for an unsuccessfull run. */
-		light_ctrl_list();
-		return true;
-	}
-
-	return false;
+    double max_value_d = (double)max_value;
+    double target_value_d = max_value_d * (light_percent_clamp(inpercent) / 100.0);
+    uint64_t target_value = LIGHT_CLAMP((uint64_t)target_value_d, 0, max_value);
+    *outraw = target_value;
+    
+    return true;
 }
 
-static bool validate(unsigned long *cur_raw, unsigned long *max_raw, bool *has_cap, unsigned long *min_cap)
+static void _light_print_usage()
 {
-	if (ctx.has_cached_brightness_max) {
-		*max_raw = ctx.cached_brightness_max;
-	} else if (!light_ctrl_get_brightness_max(ctx.ctrl_name, max_raw)) {
-		LIGHT_ERR("could not get max brightness");
-		return false;
-	}
+    printf("Usage:\n"
+        "  light [OPTIONS] [VALUE]\n"
+        "\n"
+        "Commands:\n"
+        "  -H, -h      Show this help and exit\n"
+        "  -V          Show program version and exit\n"
+        "  -L          List available devices\n"
+        
+        "  -A          Increase brightness by value\n"
+        "  -U          Decrease brightness by value\n" 
+        "  -S          Set brightness to value\n"
+        "  -G          Get brightness\n"
+        "  -N          Set minimum brightness to value\n"
+        "  -P          Get minimum brightness\n"
+        "  -I          Save the current brightness\n"
+        "  -O          Restore the previously saved brightness\n"
 
-	/* No need to go further if targetting mincap */
-	if (ctx.field == LIGHT_MIN_CAP || ctx.field == LIGHT_MAX_BRIGHTNESS) {
-		/* Init other values to 0 */
-		*cur_raw = *min_cap = 0;
-		*has_cap = false;
-		return true;
-	}
 
-	if (!light_ctrl_get_brightness(ctx.ctrl_name, cur_raw)) {
-		LIGHT_ERR("could not get brightness");
-		return false;
-	}
+        "\n"
+        "Options:\n"
+        "  -r          Interpret input and output values in raw mode\n"
+        "  -s          Specify device target path to use, use -L to list available\n"
+        "  -v          Specify the verbosity level (default 0)\n"
+        "                 0: Values only\n"
+        "                 1: Values, Errors.\n"
+        "                 2: Values, Errors, Warnings.\n"
+        "                 3: Values, Errors, Warnings, Notices.\n"
+        "\n");
 
-	if (!light_ctrl_get_cap_min(ctx.ctrl_name, has_cap, min_cap)) {
-		LIGHT_ERR("could not get min brightness");
-		return false;
-	}
-
-	if (*has_cap && *min_cap > *max_raw) {
-		LIGHT_WARN("invalid minimum cap (raw) value of '%lu' for controller, ignoring and using 0",
-			       *min_cap);
-		LIGHT_WARN("minimum cap must be inferior to '%lu'", *max_raw);
-		min_cap = 0;
-	}
-	return true;
+    printf("Copyright (C) %s  %s\n", LIGHT_YEAR, LIGHT_AUTHOR);
+    printf("This is free software, see the source for copying conditions.  There is NO\n"
+        "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE\n"
+        "\n");
 }
 
-bool light_execute(void)
+static bool _light_set_context_command(light_context_t *ctx, LFUNCCOMMAND new_cmd)
 {
-	light_val_mode_t val_mode;
-
-	unsigned long cur_raw;	/* The current brightness, in raw units */
-	double cur_percent;	/* The current brightness, in percent  */
-	unsigned long max_raw;	/* The max brightness, in percent      */
-
-	unsigned long min_cap;	/* The minimum cap, in raw units */
-	double min_cap_percent;	/* The minimum cap, in percent */
-	bool has_cap;		/* If we have a minimum cap     */
-
-	if (light_info())
-		return true;
-
-	if (!validate(&cur_raw, &max_raw, &has_cap, &min_cap))
-		return false;
-
-	val_mode = ctx.val_mode;
-	cur_percent = light_percent_clamp(((double)cur_raw) / ((double)max_raw) * 100);
-	min_cap_percent = light_percent_clamp(((double)min_cap) / ((double)max_raw) * 100);
-
-	LIGHT_NOTE("executing light on '%s' controller", ctx.ctrl_name);
-
-	/* Handle get operations */
-	if (ctx.cmd == LIGHT_GET) {
-		switch (ctx.field) {
-		case LIGHT_BRIGHTNESS:
-			(val_mode == LIGHT_RAW) ? printf("%lu\n", cur_raw) : printf("%.2f\n", cur_percent);
-			break;
-		case LIGHT_MAX_BRIGHTNESS:
-			(val_mode == LIGHT_RAW) ? printf("%lu\n", max_raw) : printf("100.00\n");	/* <- I know how stupid it is but it might just make someones life easier */
-			break;
-		case LIGHT_MIN_CAP:
-			(val_mode == LIGHT_RAW) ? printf("%lu\n", min_cap) : printf("%.2f\n", min_cap_percent);
-			break;
-		case LIGHT_SAVERESTORE:
-			break;
-		}
-		return true;
-	}
-
-	/* Handle saves and restores */
-	if (ctx.cmd == LIGHT_SAVE) {
-		if (!light_ctrl_save_brightness(ctx.ctrl_name, cur_raw)) {
-			LIGHT_ERR("could not save brightness");
-			return false;
-		}
-
-		return true;
-	}
-
-	if (ctx.cmd == LIGHT_RESTORE) {
-		if (!light_ctrl_restore_brightness(ctx.ctrl_name)) {
-			LIGHT_ERR("could not restore brightness");
-			return false;
-		}
-
-		return true;
-	}
-
-	/* Handle set/add/sub operations */
-	if (ctx.cmd == LIGHT_SET ||
-	    ctx.cmd == LIGHT_ADD || ctx.cmd == LIGHT_SUB) {
-		unsigned long raw;
-
-		if (val_mode == LIGHT_RAW)
-			raw = ctx.val_raw;
-		else
-			raw = (unsigned long)((ctx.val_percent * ((double)max_raw)) / 100.0);
-
-		if (ctx.field == LIGHT_MIN_CAP) {
-			/* Handle minimum cap files */
-			if (!light_ctrl_set_cap_min(ctx.ctrl_name, LIGHT_CLAMP(raw, 0, max_raw))) {
-				LIGHT_ERR("could not set minimum cap");
-				return false;
-			}
-
-			/* All good? Return true. */
-			return true;
-
-		} else if (ctx.field == LIGHT_BRIGHTNESS) {
-			/* Handle brightness writing */
-			unsigned long writeVal;
-
-			switch (ctx.cmd) {
-			case LIGHT_SET:
-				writeVal = LIGHT_CLAMP(raw, min_cap, max_raw);
-				break;
-			case LIGHT_ADD:
-				writeVal = LIGHT_CLAMP(cur_raw + raw, min_cap, max_raw);
-				break;
-			case LIGHT_SUB:
-				/* check if we're going below 0, which wouldn't work with unsigned values */
-				if (cur_raw < raw) {
-					light_log_clamp_min(min_cap);
-					writeVal = min_cap;
-					break;
-				}
-				writeVal = LIGHT_CLAMP(cur_raw - raw, min_cap, max_raw);
-				break;
-				/* we have already taken other possibilities, so we shouldn't get here */
-			default:
-				return false;
-			}
-
-			/* Attempt to write */
-			if (!light_ctrl_set_brightness(ctx.ctrl_name, writeVal)) {
-				LIGHT_ERR("could not set brightness");
-				return false;
-			}
-
-			/* All good? return true. */
-			return true;
-		}
-	}
-
-	/* Handle saves and restores */
-	if (ctx.cmd == LIGHT_SAVE) {
-		if (!light_ctrl_save_brightness(ctx.ctrl_name, cur_raw)) {
-			LIGHT_ERR("could not save brightness");
-			return false;
-		}
-
-		return true;
-	}
-
-	if (ctx.cmd == LIGHT_RESTORE) {
-		if (!light_ctrl_restore_brightness(ctx.ctrl_name)) {
-			LIGHT_ERR("could not restore brightness");
-			return false;
-		}
-
-		return true;
-	}
-
-	fprintf(stderr,
-		"Controller : %s\n"
-		"Value      : %lu\n"
-		"Value %%    : %.2f %%\n"
-		"Command    : %u\n"
-		"Mode       : %u\n"
-		"Field      : %u\n"
-		"\n",
-		ctx.ctrl_name, ctx.val_raw, ctx.val_percent, ctx.cmd, val_mode, ctx.field);
-
-	fprintf(stderr, "You did not specify a valid combination of command line arguments.\n");
-	light_usage();
-
-	return false;
+    if(ctx->run_params.command != NULL)
+    {
+        LIGHT_WARN("a command was already set. ignoring.");
+        return false;
+    }
+    
+    ctx->run_params.command = new_cmd;
+    return true;
 }
 
-void light_free(void)
+static bool _light_parse_arguments(light_context_t *ctx, int argc, char** argv)
 {
+    int32_t curr_arg = -1;
+    int32_t log_level = 0;
+    
+    char ctrl_name[NAME_MAX];
+    bool need_value = false;
+    bool need_target = true; // default cmd is get brightness
+    snprintf(ctrl_name, sizeof(ctrl_name), "%s", "sysfs/backlight/auto");
+    
+    while((curr_arg = getopt(argc, argv, "HhVGSLMNPAUOIv:s:r")) != -1)
+    {
+        switch(curr_arg)
+        {
+            // Options
+            
+            case 'v':
+                if (sscanf(optarg, "%i", &log_level) != 1)
+                {
+                    fprintf(stderr, "-v argument is not an integer.\n\n");
+                    _light_print_usage();
+                    return false;
+                }
+                
+                if (log_level < 0 || log_level > 3)
+                {
+                    fprintf(stderr, "-v argument must be between 0 and 3.\n\n");
+                    _light_print_usage();
+                    return false;
+                }
+                
+                light_loglevel = (light_loglevel_t)log_level;
+                break;
+            case 's':
+                snprintf(ctrl_name, sizeof(ctrl_name), "%s", optarg);
+                break;
+            case 'r':
+                ctx->run_params.raw_mode = true;
+                break;
+            
+            // Commands
+            case 'H':
+            case 'h':
+                _light_set_context_command(ctx, light_cmd_print_help);
+                break;
+            case 'V':
+                _light_set_context_command(ctx, light_cmd_print_version);
+                break;
+            case 'G':
+                _light_set_context_command(ctx, light_cmd_get_brightness);
+                need_target = true;
+                break;
+            case 'S':
+                _light_set_context_command(ctx, light_cmd_set_brightness);
+                need_value = true;
+                need_target = true;
+                break;
+            case 'L':
+                _light_set_context_command(ctx, light_cmd_list_devices);
+                break;
+            case 'M':
+                _light_set_context_command(ctx, light_cmd_get_max_brightness);
+                need_target = true;
+                break;
+            case 'N':
+                _light_set_context_command(ctx, light_cmd_set_min_brightness);
+                need_target = true;
+                need_value = true;
+                break;
+            case 'P':
+                _light_set_context_command(ctx, light_cmd_get_min_brightness);
+                need_target = true;
+                break;
+            case 'A':
+                _light_set_context_command(ctx, light_cmd_add_brightness);
+                need_target = true;
+                need_value = true;
+                break;
+            case 'U':
+                _light_set_context_command(ctx, light_cmd_sub_brightness);
+                need_target = true;
+                need_value = true;
+                break;
+            case 'O':
+                _light_set_context_command(ctx, light_cmd_save_brightness);
+                need_target = true;
+                break;
+            case 'I':
+                _light_set_context_command(ctx, light_cmd_restore_brightness);
+                need_target = true;
+                break;
+        }
+    }
 
+    if(ctx->run_params.command == NULL)
+    {
+        _light_set_context_command(ctx, light_cmd_get_brightness);
+    }
+    
+    if(need_target)
+    {
+        light_device_target_t *curr_target = light_find_device_target(ctx, ctrl_name);
+        if(curr_target == NULL)
+        {
+            fprintf(stderr, "couldn't find a device target at the path \"%s\". Use -L to find one.\n\n", ctrl_name);
+            return false;
+        }
+        
+        ctx->run_params.device_target = curr_target;
+    }
+    
+    if(need_value)
+    {
+        if ( (argc - optind) != 1)
+        {
+            fprintf(stderr, "please specify a <value> for this command.\n\n");
+            _light_print_usage();
+            return false;
+        }
+
+        if (ctx->run_params.raw_mode)
+        {
+            if (sscanf(argv[optind], "%lu", &ctx->run_params.value) != 1)
+            {
+                fprintf(stderr, "<value> is not an integer.\n\n");
+                _light_print_usage();
+                return false;
+            }
+            
+        }
+        else
+        {
+            double percent_value = 0.0;
+            if (sscanf(argv[optind], "%lf", &percent_value) != 1)
+            {
+                fprintf(stderr, "<value> is not a decimal.\n\n");
+                _light_print_usage();
+                return false;
+            }
+            
+            percent_value = light_percent_clamp(percent_value);
+            
+            uint64_t raw_value = 0;
+            if(!_light_percent_to_raw(ctx->run_params.device_target, percent_value, &raw_value))
+            {
+                LIGHT_ERR("failed to convert from percent to raw for device target");
+                return false;
+            }
+            
+            ctx->run_params.value = raw_value;
+        }
+    }
+    
+    return true;
+    
 }
 
-/*
- * WARNING: `buffer` HAS to be freed by the user if not null once
- * returned!  Size is always NAME_MAX + 1
- */
-bool light_gen_path(char const *controller, light_target_t target, light_field_t type, char **buffer)
+
+
+
+/* API function definitions */
+
+light_context_t* light_initialize(int argc, char **argv)
 {
-	char *path;
-	int val = -1;
+    light_context_t *new_ctx = malloc(sizeof(light_context_t));
 
-	if (!light_check_ctrl(controller)) {
-		LIGHT_ERR("invalid controller, couldn't generate path");
-		return false;
-	}
+    // Setup default values and runtime params
+    new_ctx->enumerators = NULL;
+    new_ctx->num_enumerators = 0;
+    new_ctx->run_params.command = NULL;
+    new_ctx->run_params.device_target = NULL;
+    new_ctx->run_params.value = 0;
+    new_ctx->run_params.raw_mode = false;
 
-	if (!buffer) {
-		LIGHT_ERR("a valid buffer is required");
-		return false;
-	}
-	*buffer = NULL;
+    // Setup the configuration folder
+    // If we are root, use the system-wide configuration folder, otherwise try to find a user-specific folder, or fall back to ~/.config
+    if (geteuid() == 0)
+    {
+        snprintf(new_ctx->sys_params.conf_dir, sizeof(new_ctx->sys_params.conf_dir), "%s", "/etc/light");
+    }
+    else
+    {
+        char *xdg_conf = getenv("XDG_CONFIG_HOME");
+        
+        if (xdg_conf != NULL)
+        {
+            snprintf(new_ctx->sys_params.conf_dir, sizeof(new_ctx->sys_params.conf_dir), "%s/light", xdg_conf);
+        }
+        else
+        {
+            snprintf(new_ctx->sys_params.conf_dir, sizeof(new_ctx->sys_params.conf_dir), "%s/.config/light", getenv("HOME"));
+        }
+    }
+    
+    // Make sure the configuration folder exists, otherwise attempt to create it
+    int32_t rc = light_mkpath(new_ctx->sys_params.conf_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    if (rc && errno != EEXIST)
+    {
+        LIGHT_WARN("couldn't create configuration directory");
+        return false;
+    }
+    
+    // Create the built-in enumerators
+    light_create_enumerator(new_ctx, "sysfs", &impl_sysfs_init, &impl_sysfs_free);
+    //light_create_enumerator(new_ctx, "razer", &impl_razer_init, &impl_razer_free);
 
-	/* PATH_MAX define includes the '\0' character, so no + 1 here */
-	path = malloc(PATH_MAX);
-	if (!path) {
-		LIGHT_MEMERR();
-		return false;
-	}
+    // This is where we would create enumerators from plugins as well
+    // 1. Run the plugins get_name() function to get its name
+    // 2. Point to the plugins init() and free() functions when creating the enumerator
 
-	if (target == LIGHT_BACKLIGHT) {
-		switch (type) {
-		case LIGHT_BRIGHTNESS:
-			val = snprintf(path, PATH_MAX, "/sys/class/backlight/%s/brightness", controller);
-			break;
+    // initialize all enumerators, this will create all the devices and their targets
+    if(!light_init_enumerators(new_ctx))
+    {
+        LIGHT_WARN("failed to initialize all enumerators");
+    }
 
-		case LIGHT_MAX_BRIGHTNESS:
-			val = snprintf(path, PATH_MAX, "/sys/class/backlight/%s/max_brightness", controller);
-			break;
-
-		case LIGHT_MIN_CAP:
-			val = snprintf(path, PATH_MAX, "%s/mincap/%s", ctx.prefix, controller);
-			break;
-
-		case LIGHT_SAVERESTORE:
-			val = snprintf(path, PATH_MAX, "%s/save/%s", ctx.prefix, controller);
-			break;
-		}
-	} else {
-		switch (type) {
-		case LIGHT_BRIGHTNESS:
-			val = snprintf(path, PATH_MAX, "/sys/class/leds/%s/brightness", controller);
-			break;
-
-		case LIGHT_MAX_BRIGHTNESS:
-			val = snprintf(path, PATH_MAX, "/sys/class/leds/%s/max_brightness", controller);
-			break;
-
-		case LIGHT_MIN_CAP:
-			val = snprintf(path, PATH_MAX, "%s/mincap/kbd/%s", ctx.prefix, controller);
-			break;
-
-		case LIGHT_SAVERESTORE:
-			val = snprintf(path, PATH_MAX, "%s/save/kbd/%s", ctx.prefix, controller);
-			break;
-		}
-	}
-
-	if (val < 0) {
-		LIGHT_ERR("snprintf failed");
-		free(path);
-		return false;
-	}
-
-	/* PATH_MAX define includes the '\0' character, so - 1 here */
-	if (val > PATH_MAX - 1) {
-		LIGHT_ERR("generated path is too long to be handled");
-		return false;
-	}
-
-	*buffer = path;
-	return true;
+    // Parse arguments
+    if(!_light_parse_arguments(new_ctx, argc, argv))
+    {
+        LIGHT_ERR("failed to parse arguments");
+        return NULL;
+    }
+    
+    return new_ctx;
 }
 
-bool light_ctrl_get_brightnessPath(char const *controller, char **path)
+bool light_execute(light_context_t *ctx)
 {
-	if (!light_gen_path(controller, ctx.target, LIGHT_BRIGHTNESS, path)) {
-		LIGHT_ERR("could not generate path to brightness file");
-		return false;
-	}
-	return true;
+    if(ctx->run_params.command == NULL)
+    {
+        LIGHT_ERR("run parameters command was null, can't execute");
+        return false;
+    }
+    
+    return ctx->run_params.command(ctx);
 }
 
-bool light_ctrl_get_brightness(char const *controller, unsigned long *v)
+void light_free(light_context_t *ctx)
 {
-	char *path = NULL;
-	bool rc = false;
-
-	if (!light_ctrl_get_brightnessPath(controller, &path))
-		return false;
-
-	rc = light_file_read_val(path, v);
-	free(path);
-
-	if (!rc) {
-		LIGHT_ERR("could not read value from brightness file");
-		return false;
-	}
-	return true;
+    if(!light_free_enumerators(ctx))
+    {
+        LIGHT_WARN("failed to free all enumerators");
+    }
+    
+    free(ctx);
 }
 
-bool light_ctrl_get_brightness_maxPath(char const *controller, char **path)
+light_device_enumerator_t * light_create_enumerator(light_context_t *ctx, char const * name, LFUNCENUMINIT init_func, LFUNCENUMFREE free_func)
 {
-	if (!light_gen_path(controller, ctx.target, LIGHT_MAX_BRIGHTNESS, path)) {
-		LIGHT_ERR("could not generate path to maximum brightness file");
-		return false;
-	}
-	return true;
+    // Create a new enumerator array 
+    uint64_t new_num_enumerators = ctx->num_enumerators + 1;
+    light_device_enumerator_t **new_enumerators = malloc(new_num_enumerators * sizeof(light_device_enumerator_t*));
+    
+    // Copy old enumerator array to new one
+    for(uint64_t i = 0; i < ctx->num_enumerators; i++)
+    {
+        new_enumerators[i] = ctx->enumerators[i];
+    }
+    
+    // Allocate the new enumerator
+    new_enumerators[ctx->num_enumerators] = malloc(sizeof(light_device_enumerator_t*));
+    light_device_enumerator_t *returner = new_enumerators[ctx->num_enumerators];
+    
+    returner->devices = NULL;
+    returner->num_devices = 0;
+    returner->init = init_func;
+    returner->free = free_func;
+    snprintf(returner->name, sizeof(returner->name), "%s", name);
+    
+    // Free the old enumerator array, if needed
+    if(ctx->enumerators != NULL)
+    {
+        free(ctx->enumerators);
+    }
+    
+    // Replace the enumerator array with the new one
+    ctx->enumerators = new_enumerators;
+    ctx->num_enumerators = new_num_enumerators;
+    
+    // Return newly created device
+    return returner;
 }
 
-bool light_ctrl_get_brightness_max(char const *controller, unsigned long *v)
+bool light_init_enumerators(light_context_t *ctx)
 {
-	char *path = NULL;
-	bool rc = false;
-
-	if (!light_ctrl_get_brightness_maxPath(controller, &path))
-		return false;
-
-	rc = light_file_read_val(path, v);
-	free(path);
-
-	if (!rc) {
-		LIGHT_ERR("could not read value from max brightness file");
-		return false;
-	}
-
-	if (*v == 0) {
-		LIGHT_ERR("max brightness is 0, so controller is not valid");
-		return false;
-	}
-
-	return true;
+    bool success = true;
+    for(uint64_t i = 0; i < ctx->num_enumerators; i++)
+    {
+        light_device_enumerator_t * curr_enumerator = ctx->enumerators[i];
+        if(!curr_enumerator->init(curr_enumerator))
+        {
+            success = false;
+        }
+    }
+    
+    return success;
 }
 
-bool light_ctrl_set_brightness(char const *controller, unsigned long v)
+void light_dispose_device(light_device_t *device)
 {
-	char *path = NULL;
-	bool rc;
-
-	if (!light_gen_path(controller, ctx.target, ctx.field, &path)) {
-		LIGHT_ERR("could not generate path to brightness file");
-		return false;
-	}
-
-	LIGHT_NOTE("setting brightness %lu (raw) to controller", v);
-	rc = light_file_write_val(path, v);
-
-	if (!rc) {
-		LIGHT_ERR("could not write value to brightness file");
-	}
-
-	free(path);
-	return rc;
+    if(device->targets != NULL)
+    {
+        free(device->targets);
+        device->targets = NULL;
+    }
+    
+    device->num_targets = 0;
 }
 
-bool light_ctrl_exist(char const *controller)
+bool light_free_enumerators(light_context_t *ctx)
 {
-	char *path = NULL;
-
-	/* On auto mode, we need to check if we can read the max brightness value
-	   of the controller for later computation */
-	if (ctx.ctrl == LIGHT_AUTO || ctx.field == LIGHT_MAX_BRIGHTNESS) {
-		if (!light_ctrl_get_brightness_maxPath(controller, &path))
-			return false;
-		if (!light_file_is_readable(path)) {
-			LIGHT_WARN("could not open controller max brightness "
-				   "file for reading, so controller is not accessible");
-			free(path);
-			return false;
-		}
-		free(path);
-	}
-
-	if (!light_ctrl_get_brightnessPath(controller, &path))
-		return false;
-
-	if (ctx.cmd != LIGHT_GET && ctx.cmd != LIGHT_SAVE &&
-	    ctx.field != LIGHT_MIN_CAP && !light_file_is_writable(path)) {
-		LIGHT_WARN("could not open controller brightness file for writing, so controller is not accessible");
-		free(path);
-		return false;
-	} else if (!light_file_is_readable(path)) {
-		LIGHT_WARN("could not open controller brightness file for reading, so controller is not accessible");
-		free(path);
-		return false;
-	}
-
-	free(path);
-	return true;
+    bool success = true;
+    for(uint64_t i = 0; i < ctx->num_enumerators; i++)
+    {
+        light_device_enumerator_t * curr_enumerator = ctx->enumerators[i];
+        if(!curr_enumerator->free(curr_enumerator))
+        {
+            success = false;
+        }
+        
+        if(curr_enumerator->devices != NULL)
+        {
+            free(curr_enumerator->devices);
+            curr_enumerator->devices = NULL;
+        }
+        
+        free(curr_enumerator);
+    }
+    
+    free(ctx->enumerators);
+    ctx->enumerators = NULL;
+    ctx->num_enumerators = 0;
+    
+    return success;
 }
 
-static bool light_ctrl_init(DIR **dir)
+void light_add_enumerator_device(light_device_enumerator_t *enumerator, light_device_t *new_device)
 {
-	if (!dir) {
-		errno = EINVAL;
-		return false;
-	}
-
-	if (ctx.target == LIGHT_KEYBOARD)
-		*dir = opendir("/sys/class/leds");
-	else
-		*dir = opendir("/sys/class/backlight");
-
-	if (!*dir)
-		return false;
-
-	return true;
+    // Create a new device array 
+    uint64_t new_num_devices = enumerator->num_devices + 1;
+    light_device_t **new_devices = malloc(new_num_devices * sizeof(light_device_t*));
+    
+    // Copy old device array to new one
+    for(uint64_t i = 0; i < enumerator->num_devices; i++)
+    {
+        new_devices[i] = enumerator->devices[i];
+    }
+    
+    // Set the new device
+    new_devices[enumerator->num_devices] = new_device;
+    
+    // Free the old devices array, if needed
+    if(enumerator->devices != NULL)
+    {
+        free(enumerator->devices);
+    }
+    
+    // Replace the devices array with the new one
+    enumerator->devices = new_devices;
+    enumerator->num_devices = new_num_devices;
+    
+    new_device->enumerator = enumerator;
 }
 
-static bool light_ctrl_iterate(DIR *dir, char *current, size_t len)
+void light_add_device_target(light_device_t *device, light_device_target_t *new_target)
 {
-	struct dirent *d;
-	bool found = false;
-
-	if (!dir || !current)
-		return false;
-
-	while (!found) {
-		d = readdir(dir);
-		if (!d)
-			return false;
-
-		if (d->d_name[0] != '.') {
-			if (!light_check_ctrl(d->d_name)) {
-				LIGHT_WARN("invalid controller '%s' found, continuing...", d->d_name);
-				continue;
-			}
-			found = true;
-		}
-	}
-
-	snprintf(current, len, "%s", d->d_name);
-
-	return true;
+    // Create a new targets array 
+    uint64_t new_num_targets = device->num_targets + 1;
+    light_device_target_t **new_targets = malloc(new_num_targets * sizeof(light_device_target_t*));
+    
+    // Copy old targets array to new one
+    for(uint64_t i = 0; i < device->num_targets; i++)
+    {
+        new_targets[i] = device->targets[i];
+    }
+    
+    // Set the new target
+    new_targets[device->num_targets] = new_target;
+    
+    // Free the old targets array, if needed
+    if(device->targets != NULL)
+    {
+        free(device->targets);
+    }
+    
+    // Replace the targets array with the new one
+    device->targets= new_targets;
+    device->num_targets = new_num_targets;
+    
+    new_target->device = device;
 }
 
-/* WARNING: `controller` HAS to be at most NAME_MAX, otherwise fails */
-bool light_ctrl_probe(char *controller, size_t len)
+
+bool light_split_target_path(char const *in_path, light_target_path_t *out_path)
 {
-	DIR *dir;
-	unsigned long best = 0;
-	bool found = false;
-	char best_name[NAME_MAX + 1];
-	char current[NAME_MAX + 1];
-
-	if (!controller) {
-		LIGHT_ERR("Missing controller name");
-		return false;
-	}
-
-	if (!light_ctrl_init(&dir)) {
-		LIGHT_ERR("Failed listing controllers: %s", strerror(errno));
-		return false;
-	}
-
-	while (light_ctrl_iterate(dir, current, sizeof(current))) {
-		unsigned long val = 0;
-
-		LIGHT_NOTE("found '%s' controller", current);
-		if (light_ctrl_exist(current)) {
-
-			if (light_ctrl_get_brightness_max(current, &val)) {
-				if (val > best) {
-					found = true;
-					best = val;
-					snprintf(best_name, sizeof(best_name), "%s", current);
-					ctx.has_cached_brightness_max = true;
-					ctx.cached_brightness_max = val;
-				} else {
-					LIGHT_NOTE("ignoring controller as better one already found");
-				}
-			} else {
-				LIGHT_WARN("could not read max brightness from file");
-			}
-		} else {
-			LIGHT_WARN("controller not accessible");
-		}
-	}
-
-	closedir(dir);
-
-	if (!found) {
-		LIGHT_ERR("could not find an accessible controller");
-		return false;
-	}
-
-	if (best == 0) {
-		LIGHT_ERR("found accessible controller but it's useless/corrupt");
-		return false;
-	}
-
-	snprintf(controller, len, "%s", best_name);
-
-	return true;
+    char const * begin = in_path;
+    char const * end = strstr(begin, "/");
+    if(end == NULL)
+    {
+        LIGHT_WARN("invalid path passed to split_target_path");
+        return false;
+    }
+    
+    size_t size = end - begin;
+    strncpy(out_path->enumerator, begin, size);
+    out_path->enumerator[size] = '\0';
+    
+    begin = end + 1;
+    end = strstr(begin, "/");
+    if(end == NULL)
+    {
+        LIGHT_WARN("invalid path passed to split_target_path");
+        return false;
+    }
+    
+    size = end - begin;
+    strncpy(out_path->device, begin, size);
+    out_path->device[size] = '\0';
+    
+    strcpy(out_path->target, end + 1);
+    
+    return true;
 }
 
-bool light_ctrl_get_cap_min(char const *controller, bool *has_cap, unsigned long *min_cap)
+light_device_target_t* light_find_device_target(light_context_t *ctx, char const * name)
 {
-	char *path = NULL;
-
-	if (!light_gen_path(controller, ctx.target, LIGHT_MIN_CAP, &path)) {
-		LIGHT_ERR("could not generate path to minimum cap file");
-		return false;
-	}
-
-	if (!light_file_is_readable(path)) {
-		*has_cap = false;
-		*min_cap = 0;
-		free(path);
-		LIGHT_NOTE("cap file doesn't exist or can't read from it, so assuming a minimum brightness of 0");
-		return true;
-	}
-
-	if (!light_file_read_val(path, min_cap)) {
-		LIGHT_ERR("could not read minimum cap from file");
-		free(path);
-		return false;
-	}
-
-	*has_cap = true;
-
-	free(path);
-	return true;
+    light_target_path_t new_path;
+    light_split_target_path(name, &new_path);
+    
+    /*
+    Uncomment to debug the split function
+    printf("enumerator: %s %u\ndevice: %s %u\ntarget: %s %u\n",
+            new_path.enumerator, strlen(new_path.enumerator),
+            new_path.device, strlen(new_path.device),
+            new_path.target, strlen(new_path.target));
+    */
+    
+    // find a matching enumerator 
+    
+    light_device_enumerator_t *enumerator = _light_find_enumerator(ctx, new_path.enumerator);
+    if(enumerator == NULL)
+    {
+        LIGHT_WARN("no such enumerator, \"%s\"", new_path.enumerator);
+        return NULL;
+    }
+    
+    light_device_t *device = _light_find_device(enumerator, new_path.device);
+    if(device == NULL)
+    {
+        LIGHT_WARN("no such device, \"%s\"", new_path.device);
+        return NULL;
+    }
+    
+    light_device_target_t *target = _light_find_target(device, new_path.target);
+    if(target == NULL)
+    {
+        LIGHT_WARN("no such target, \"%s\"", new_path.target);
+        return NULL;
+    }
+    
+    return target;
 }
 
-bool light_ctrl_set_cap_min(char const *controller, unsigned long val)
+bool light_cmd_print_help(light_context_t *ctx)
 {
-	char *path = NULL;
-
-	if (!light_gen_path(controller, ctx.target, LIGHT_MIN_CAP, &path)) {
-		LIGHT_ERR("could not generate path to minimum cap file");
-		return false;
-	}
-
-	LIGHT_NOTE("setting minimum cap to %lu (raw)", val);
-	if (!light_file_write_val(path, val)) {
-		LIGHT_ERR("could not write to minimum cap file");
-		free(path);
-		return false;
-	}
-
-	free(path);
-	return true;
+    _light_print_usage();
+    return true;
 }
 
-bool light_ctrl_list(void)
+bool light_cmd_print_version(light_context_t *ctx)
 {
-	char controller[NAME_MAX];
-	bool found = false;
-	DIR *dir;
-
-	if (!light_ctrl_init(&dir)) {
-		LIGHT_ERR("Failed listing controllers: %s", strerror(errno));
-		return false;
-	}
-
-	while (light_ctrl_iterate(dir, controller, sizeof(controller))) {
-		printf("%s\n", controller);
-		found = true;
-	}
-
-	if (!found) {
-		LIGHT_WARN("no controllers found, either check your system or your permissions");
-		return false;
-	}
-
-	return true;
+    printf("v%s\n", VERSION);
+    return true;
 }
 
-bool light_ctrl_save_brightness(char const *controller, unsigned long val)
+bool light_cmd_list_devices(light_context_t *ctx)
 {
-	char *path = NULL;
-
-	if (!light_gen_path(controller, ctx.target, LIGHT_SAVERESTORE, &path)) {
-		LIGHT_ERR("could not generate path to save/restore file");
-		return false;
-	}
-
-	LIGHT_NOTE("saving brightness %lu (raw) to save file %s\n", val, path);
-	if (!light_file_write_val(path, val)) {
-		LIGHT_ERR("could not write to save/restore file");
-		free(path);
-		return false;
-	}
-
-	free(path);
-	return true;
+    printf("Listing device targets:\n");
+    for(uint64_t enumerator = 0; enumerator < ctx->num_enumerators; enumerator++)
+    {
+        light_device_enumerator_t *curr_enumerator = ctx->enumerators[enumerator];
+        for(uint64_t device = 0; device < curr_enumerator->num_devices; device++)
+        {
+            light_device_t *curr_device = curr_enumerator->devices[device];
+            for(uint64_t target = 0; target < curr_device->num_targets; target++)
+            {
+                light_device_target_t *curr_target = curr_device->targets[target];
+                
+                printf("\t%s/%s/%s\n", curr_enumerator->name, curr_device->name, curr_target->name);
+            }
+        }
+    }
+    
+    return true;
 }
 
-bool light_ctrl_restore_brightness(char const *controller)
+bool light_cmd_set_brightness(light_context_t *ctx)
 {
-	char *path = NULL;
-	unsigned long val = 0;
-
-	if (!light_gen_path(controller, ctx.target, LIGHT_SAVERESTORE, &path)) {
-		LIGHT_ERR("could not generate path to save/restore file");
-		return false;
-	}
-
-	LIGHT_NOTE("restoring brightness from saved file %s", path);
-	if (!light_file_read_val(path, &val)) {
-		LIGHT_ERR("could not read saved value");
-		free(path);
-		return false;
-	}
-
-	if (!light_ctrl_set_brightness(controller, val)) {
-		LIGHT_ERR("could not set restored brightness");
-		free(path);
-		return false;
-	}
-
-	free(path);
-	return true;
+    light_device_target_t *target = ctx->run_params.device_target;
+    if(target == NULL)
+    {
+        LIGHT_ERR("didn't have a valid target, programmer mistake");
+        return false;
+    }
+    
+    
+    uint64_t mincap = _light_get_min_cap(ctx);
+    uint64_t value = ctx->run_params.value;
+    if(mincap > value)
+    {
+        value = mincap;
+    }
+    
+    if(!target->set_value(target, value))
+    {
+        LIGHT_ERR("failed to write to target");
+        return false;
+    }
+    
+    return true;
 }
+
+bool light_cmd_get_brightness(light_context_t *ctx)
+{
+    light_device_target_t *target = ctx->run_params.device_target;
+    if(target == NULL)
+    {
+        LIGHT_ERR("didn't have a valid target, programmer mistake");
+        return false;
+    }
+    
+    uint64_t value = 0;
+    if(!target->get_value(target, &value))
+    {
+        LIGHT_ERR("failed to read from target");
+        return false;
+    }
+    
+    if(ctx->run_params.raw_mode)
+    {
+        printf("%" PRIu64 "\n", value);
+    }
+    else 
+    {
+        double percent = 0.0;
+        if(!_light_raw_to_percent(target, value, &percent))
+        {
+            LIGHT_ERR("failed to convert from raw to percent from device target");
+            return false;
+        }
+        printf("%.2f\n", percent);
+    }
+    
+    return true;
+}
+
+bool light_cmd_get_max_brightness(light_context_t *ctx)
+{
+    light_device_target_t *target = ctx->run_params.device_target;
+    if(target == NULL)
+    {
+        LIGHT_ERR("didn't have a valid target, programmer mistake");
+        return false;
+    }
+    
+    if(!ctx->run_params.raw_mode)
+    {
+        printf("100.0\n");
+        return true;
+    }
+    
+    uint64_t max_value = 0;
+    if(!target->get_max_value(target, &max_value))
+    {
+        LIGHT_ERR("failed to read from device target");
+        return false;
+    }
+    
+    printf("%" PRIu64 "\n", max_value);
+    return true;
+}
+
+bool light_cmd_set_min_brightness(light_context_t *ctx)
+{
+    char target_path[NAME_MAX];
+    _light_get_target_path(ctx, target_path, sizeof(target_path));
+    
+    // Make sure the target folder exists, otherwise attempt to create it
+    int32_t rc = light_mkpath(target_path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    if (rc && errno != EEXIST)
+    {
+        LIGHT_ERR("couldn't create target directory for minimum brightness");
+        return false;
+    }
+    
+    char target_filepath[NAME_MAX];
+    _light_get_target_file(ctx, target_filepath, sizeof(target_filepath), "minimum");
+    
+    if(!light_file_write_uint64(target_filepath, ctx->run_params.value))
+    {
+        LIGHT_ERR("couldn't write value to minimum file");
+        return false;
+    }
+    
+    return true;
+}
+
+bool light_cmd_get_min_brightness(light_context_t *ctx)
+{
+    char target_path[NAME_MAX];
+    _light_get_target_file(ctx, target_path, sizeof(target_path), "minimum");
+
+    uint64_t minimum_value = 0;
+    if(!light_file_read_uint64(target_path, &minimum_value))
+    {
+        if(ctx->run_params.raw_mode)
+        {
+            printf("0\n");
+        }
+        else 
+        {
+            printf("0.00\n");
+        }
+
+        return true;
+    }
+    
+    if(ctx->run_params.raw_mode)
+    {
+        printf("%" PRIu64 "\n", minimum_value);
+    }
+    else 
+    {
+        double minimum_d = 0.0;
+        if(!_light_raw_to_percent(ctx->run_params.device_target, minimum_value, &minimum_d))
+        {
+            LIGHT_ERR("failed to convert value from raw to percent for device target");
+            return false;
+        }
+        
+        printf("%.2f\n", minimum_d);
+    }
+    
+    return true;
+}
+
+bool light_cmd_add_brightness(light_context_t *ctx)
+{
+    light_device_target_t *target = ctx->run_params.device_target;
+    if(target == NULL)
+    {
+        LIGHT_ERR("didn't have a valid target, programmer mistake");
+        return false;
+    }
+    
+    uint64_t value = 0;
+    if(!target->get_value(target, &value))
+    {
+        LIGHT_ERR("failed to read from target");
+        return false;
+    }
+    
+    uint64_t max_value = 0;
+    if(!target->get_max_value(target, &max_value))
+    {
+        LIGHT_ERR("failed to read from target");
+        return false;
+    }
+    
+    value += ctx->run_params.value;
+    
+    uint64_t mincap = _light_get_min_cap(ctx);
+    if(mincap > value)
+    {
+        value = mincap;
+    }
+    
+    
+    if(value > max_value)
+    {
+        value = max_value;
+    }
+    
+    if(!target->set_value(target, value))
+    {
+        LIGHT_ERR("failed to write to target");
+        return false;
+    }
+    
+    return true;
+}
+
+bool light_cmd_sub_brightness(light_context_t *ctx)
+{
+    light_device_target_t *target = ctx->run_params.device_target;
+    if(target == NULL)
+    {
+        LIGHT_ERR("didn't have a valid target, programmer mistake");
+        return false;
+    }
+    
+    uint64_t value = 0;
+    if(!target->get_value(target, &value))
+    {
+        LIGHT_ERR("failed to read from target");
+        return false;
+    }
+    
+    if(value > ctx->run_params.value)
+    {
+        value -= ctx->run_params.value;
+    }
+    else 
+    {
+        value = 0;
+    }
+    
+    uint64_t mincap = _light_get_min_cap(ctx);
+    if(mincap > value)
+    {
+        value = mincap;
+    }
+
+    if(!target->set_value(target, value))
+    {
+        LIGHT_ERR("failed to write to target");
+        return false;
+    }
+    
+    return true;
+}
+
+bool light_cmd_save_brightness(light_context_t *ctx)
+{
+    char target_path[NAME_MAX];
+    _light_get_target_path(ctx, target_path, sizeof(target_path));
+    
+    // Make sure the target folder exists, otherwise attempt to create it
+    int32_t rc = light_mkpath(target_path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    if (rc && errno != EEXIST)
+    {
+        LIGHT_ERR("couldn't create target directory for save brightness");
+        return false;
+    }
+    
+    char target_filepath[NAME_MAX];
+    _light_get_target_file(ctx, target_filepath, sizeof(target_filepath), "save");
+
+    uint64_t curr_value = 0;
+    if(!ctx->run_params.device_target->get_value(ctx->run_params.device_target, &curr_value))
+    {
+        LIGHT_ERR("couldn't read from device target");
+        return false;
+    }
+    
+    if(!light_file_write_uint64(target_filepath, curr_value))
+    {
+        LIGHT_ERR("couldn't write value to savefile");
+        return false;
+    }
+    
+    return true;
+}
+
+bool light_cmd_restore_brightness(light_context_t *ctx)
+{
+    char target_path[NAME_MAX];
+    _light_get_target_file(ctx, target_path, sizeof(target_path), "save");
+
+    uint64_t saved_value = 0;
+    if(!light_file_read_uint64(target_path, &saved_value))
+    {
+        LIGHT_ERR("couldn't read value from savefile");
+        return false;
+    }
+    
+    uint64_t mincap = _light_get_min_cap(ctx);
+    if(mincap > saved_value)
+    {
+        saved_value = mincap;
+    }
+    
+    if(!ctx->run_params.device_target->set_value(ctx->run_params.device_target, saved_value))
+    {
+        LIGHT_ERR("couldn't write saved value to device target");
+        return false;
+    }
+    
+    return true;
+}
+
+
+
+
