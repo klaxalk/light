@@ -1,6 +1,13 @@
 Light - A program to control backlights (and other hardware lights) in GNU/Linux
 ==================================================
 
+*Copyright (C) 2012 - 2018*
+*Author: Fredrik Haikarainen*
+*Contributor & Maintainer: Joachim Nilsson*
+
+This is free software, see the source for copying conditions.  There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
+
+
 - [Introduction](#introduction)
 - [Examples](#examples)
 - [Usage](#usage)
@@ -99,7 +106,7 @@ Installation
 
 ### Arch Linux
 
-If you run Arch Linux, there exists 2 packages;
+If you run Arch Linux, we highly recommend the PKGBUILD in the repo. However there also exist 2 packages in the AUR, which we aim to replace;
 
 * [light-git][] - For the latest development branch (master)
 * [light][] - For the latest stable release
@@ -148,14 +155,6 @@ If your udev rules are located elsewhere, use `--with-udev=PATH`.
 directory (for cached settings) is not used, instead the per-user
 specific `~/.cache/light` is used.
 
-
-Origin & References
--------------------
-
-Copyright (C) 2012-2018 Fredrik Haikarainen
-
-This is free software, see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
 
 [Light]:     https://github.com/haikarainen/light/
 [light-git]: https://aur.archlinux.org/packages/light-git
