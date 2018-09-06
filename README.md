@@ -123,22 +123,18 @@ If you download a stable release, these are the commands that will get you up an
     ./configure && make
     sudo make install
 
-However the latest development branch requires some extras. Clone the repository and run the `autogen.sh` script.  This requires that
-`automake` and `autoconf` is installed on your system.
+However the latest development branch requires some extras. Clone the repository and run the `autogen.sh` script.  This requires that `automake` and `autoconf` is installed on your system.
 
     ./autogen.sh
     ./configure && make
     sudo make install
 
-The `configure` script and `Makefile.in` files are not part of GIT
-because they are generated at release time with `make release`.
+The `configure` script and `Makefile.in` files are not part of GIT because they are generated at release time with `make release`.
 
 
 ### Permissions
 
-Optionally, instead of the classic SUID root mode of operation, udev
-rules can be set up to manage the kernel sysfs permissions.  Use the
-configure script to enable this mode of operation:
+Optionally, instead of the classic SUID root mode of operation, udev rules can be set up to manage the kernel sysfs permissions.  Use the configure script to enable this mode of operation:
 
     ./configure --with-udev && make
     sudo make install
@@ -146,7 +142,9 @@ configure script to enable this mode of operation:
 This installs the `90-backlight.rules` into `/usr/lib/udev/rules.d/`.
 If your udev rules are located elsewhere, use `--with-udev=PATH`.
 
-Note, in this mode `light` runs unpriviliged, so the `/etc/light`
+**Note:** make sure that your user is part of the `video` group, otherwise you will not get access to the devices.
+
+**Note:** in this mode `light` runs unpriviliged, so the `/etc/light`
 directory (for cached settings) is not used, instead the per-user
 specific `~/.cache/light` is used.
 
