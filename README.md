@@ -2,10 +2,12 @@ Light - A program to control backlights (and other hardware lights) in GNU/Linux
 ==================================================
 
 *Copyright (C) 2012 - 2018*
+
 *Author: Fredrik Haikarainen*
+
 *Contributor & Maintainer: Joachim Nilsson*
 
-This is free software, see the source for copying conditions.  There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
+*This is free software, see the source for copying conditions.  There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE*
 
 
 - [Introduction](#introduction)
