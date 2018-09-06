@@ -236,6 +236,7 @@ static bool _light_parse_arguments(light_context_t *ctx, int argc, char** argv)
     char ctrl_name[NAME_MAX];
     bool need_value = false;
     bool need_target = true; // default cmd is get brightness
+    bool specified_target = false;
     snprintf(ctrl_name, sizeof(ctrl_name), "%s", "sysfs/backlight/auto");
     
     while((curr_arg = getopt(argc, argv, "HhVGSLMNPAUOIv:s:r")) != -1)
@@ -263,6 +264,7 @@ static bool _light_parse_arguments(light_context_t *ctx, int argc, char** argv)
                 break;
             case 's':
                 snprintf(ctrl_name, sizeof(ctrl_name), "%s", optarg);
+                specified_target = true;
                 break;
             case 'r':
                 ctx->run_params.raw_mode = true;
@@ -332,8 +334,16 @@ static bool _light_parse_arguments(light_context_t *ctx, int argc, char** argv)
         light_device_target_t *curr_target = light_find_device_target(ctx, ctrl_name);
         if(curr_target == NULL)
         {
-            fprintf(stderr, "couldn't find a device target at the path \"%s\". Use -L to find one.\n\n", ctrl_name);
-            return false;
+            if(specified_target)
+            {
+                fprintf(stderr, "We couldn't find the specified device target at the path \"%s\". Use -L to find one.\n\n", ctrl_name);
+                return false;
+            }
+            else 
+            {
+                fprintf(stderr, "No backlight controller was found, so we could not decide an automatic target. The current command will have no effect. Please use -L to find a target and then specify it with -s.\n\n");
+                curr_target = light_find_device_target(ctx, "util/test/dryrun");
+            }
         }
         
         ctx->run_params.device_target = curr_target;
