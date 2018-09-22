@@ -9,13 +9,13 @@ EXTRA_DIST    += $(top_srcdir)/90-backlight.rules
 endif
 
 # lintian --profile debian -i -I --show-overrides ../$PKG.changes
-package:
+deb:
 	dpkg-buildpackage -uc -us -B
 
 #
 # Target to run when building a release
 #
-release: distcheck package
+release: distcheck
 	@for file in $(DIST_ARCHIVES); do	\
 		md5sum $$file > ../$$file.md5;	\
 	done
