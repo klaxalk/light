@@ -97,14 +97,14 @@ bool light_file_is_readable(char const *filename)
 /* Prints a notice about a value which was below `x` and was adjusted to it */
 uint64_t light_log_clamp_min(uint64_t min)
 {
-    LIGHT_NOTE("too small value, adjusting to mininum %lu (raw)", min);
+    LIGHT_NOTE("too small value, adjusting to minimum %lu (raw)", min);
     return min;
 }
 
 /* Prints a notice about a value which was above `x` and was adjusted to it */
 uint64_t light_log_clamp_max(uint64_t max)
 {
-    LIGHT_NOTE("too large value, adjusting to mavalimum %lu (raw)", max);
+    LIGHT_NOTE("too large value, adjusting to maximum %lu (raw)", max);
     return max;
 }
 

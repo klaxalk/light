@@ -1,6 +1,6 @@
 light (1.2) unstable; urgency=low
 
-  * Initial Debian Release (Closes: #47)
+  * Initial Debian Release.
 
- -- Joachim Nilsson <troglobit@gmail.com>  Sun, 12 Aug 2018 22:15:00 +0100
+ -- Joachim Nilsson <troglobit@gmail.com>  Sat, 22 Sep 2018 11:53:32 +0200
 
