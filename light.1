@@ -28,64 +28,40 @@ the display to be pitch black at a vaĺue of 0 (or higher)
 The following unique commands are supported:
 .Pp
 .Bl -tag -width Ds
-.It Fl A
-Add value
-.It Fl G
-Get value, default
 .It Fl H , Fl h
 Show help text and exit
-.It Fl I
-Restore brightness
-.It Fl L
-List controllers
-.It Fl O
-Save brightness
-.It Fl S
-Set value
-.It Fl U
-Subtract value
 .It Fl V
 Show program version and exit
+.It Fl L
+List available devices
+.It Fl A
+Increase brightness by value
+.It Fl U
+Decrease brightness by value
+.It Fl S
+Set brightness to value
+.It Fl G
+Get brightness, default
+.It Fl N
+Set minimum brightness to value
+.It Fl P
+Get minimum brightness
+.It Fl I
+Save current brightness
+.It Fl O
+Restore previously saved brightness
 .El
 .Sh OPTIONS
 The behavior of the above commands can be modified using these options:
 .Pp
 .Bl -tag -width Ds
-.It Fl b
-Set
-.Fl S ,
-Get
-.Fl G ,
-Add
-.Fl A ,
-or Subtract
-.Fl U
-active brightness, default
-.It Fl k
-Act on keyboard backlight
-.It Fl l
-Act on display backlight, default
-.It Fl m
-Get
-.Fl G
-maximum brightness
-.It Fl c
-Set
-.Fl S
-or get
-.Fl G
-minimum cap for brightness
-.It Fl a
-Select controller automatically, default
-.It Fl p
-Interpret input and output values in percent, default
 .It Fl r
 Interpret input and output values in raw mode
-.It Fl s Ar ARG
-Specify controller to use.  Use
+.It Fl s Ar PATH
+Specify device target path.  Use
 .Fl L
-to list available controllers
-.It Fl v Ar ARG
+to list available devices
+.It Fl v Ar LEVEL
 Set verbosity level, by default
 .Nm
 only outputs read values:
@@ -110,7 +86,7 @@ In its non-priviliged mode of operation the
 .Pa ~/.cache/light
 directory is used instead.
 .Sh AUTHORS
-Copyright \(co 2014-2018 Fredrik Haikarainen
+Copyright \(co 2012-2018 Fredrik Haikarainen
 .Pp
 This is free software, see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
