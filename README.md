@@ -122,6 +122,14 @@ Fedora already has light packaged in main repos, so just run:
 
 and you're good to go.
 
+### Debian/Ubuntu
+
+Pre-built .deb files, for the latest Ubuntu release, can be downloaded
+from the [GitHub][Light] releases page.  If you want to build your own
+there is native support available in the GIT sources.  Clone and follow
+the development branch guidelines below followed by:
+
+    make deb
 
 ### Manual
 
