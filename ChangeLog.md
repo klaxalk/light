@@ -4,19 +4,22 @@ Change Log
 All relevant changes to the project are documented in this file.
 
 
-[v1.2][UNRELEASED] - 2018-08-xx
--------------------------------
+[v1.2][] - 2018-09-23
+---------------------
 
 ### Changes
-- Convert to GNU configure & build system
-- Add support for installing non-SUID root using an udev rule
+- Converted to GNU configure & build system
+- Major rewrite to add a device system, folds in all kinds of
+  display/keyboard/LED controllers under one roof.  Note, this
+  change break command line options from previous releases
+- Support for installing as non-SUID root using an udev rule
   enabled `--with-udev` to the new configure script
-- Migrate to use `~/.cache/light` instead of `/etc/light` for
-  unpriviliged operation
-- Add proper light.1 man page, remvoes help2man dependency
-- Simplify presentation of commands and options in built-in help text,
+- Migrated to use `~/.cache/light` instead of `/etc/light` for
+  unpriviliged operation.  Respects XDG_CACHE_HOME if set
+- Added proper light.1 man page, remvoes help2man dependency
+- Update presentation of commands and options in built-in help text,
   as well as in the README and man page
-- Change to Linux coding style
+- Overhaul of coding style, see DOCUMENTATION.md for details
 - Add Fedora installation instructions
 
 
@@ -106,7 +109,8 @@ v0.7 - 2012-11-18
 - Ported bash script to C
 
 
-[UNRELEASED]: https://github.com/haikarainen/light/compare/v1.1.2...HEAD
+[UNRELEASED]: https://github.com/haikarainen/light/compare/v1.2...HEAD
+[v1.2]:       https://github.com/haikarainen/light/compare/v1.1.2...v1.2
 [v1.1.2]:     https://github.com/haikarainen/light/compare/v1.1...v1.1.2
 [v1.1]:       https://github.com/haikarainen/light/compare/v1.0...v1.1
 [v1.0]:       https://github.com/haikarainen/light/compare/v0.9...v1.0
