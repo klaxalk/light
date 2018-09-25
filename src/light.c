@@ -604,7 +604,11 @@ bool light_split_target_path(char const *in_path, light_target_path_t *out_path)
 light_device_target_t* light_find_device_target(light_context_t *ctx, char const * name)
 {
     light_target_path_t new_path;
-    light_split_target_path(name, &new_path);
+    if(!light_split_target_path(name, &new_path))
+    {
+        LIGHT_WARN("light_find_device_target needs a path in the format of \"enumerator/device/target\", the following format is not recognized:  \"%s\"", name);
+        return NULL;
+    }
     
     /*
     Uncomment to debug the split function
