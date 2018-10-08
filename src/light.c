@@ -191,6 +191,7 @@ static void _light_print_usage()
         
         "  -A          Increase brightness by value\n"
         "  -U          Decrease brightness by value\n" 
+        "  -T          Multiply brightness by value (can be a non-whole number, ignores raw mode)\n"
         "  -S          Set brightness to value\n"
         "  -G          Get brightness\n"
         "  -N          Set minimum brightness to value\n"
@@ -201,7 +202,7 @@ static void _light_print_usage()
 
         "\n"
         "Options:\n"
-        "  -r          Interpret input and output values in raw mode\n"
+        "  -r          Interpret input and output values in raw mode (ignored for -T)\n"
         "  -s          Specify device target path to use, use -L to list available\n"
         "  -v          Specify the verbosity level (default 0)\n"
         "                 0: Values only\n"
@@ -235,11 +236,12 @@ static bool _light_parse_arguments(light_context_t *ctx, int argc, char** argv)
     
     char ctrl_name[NAME_MAX];
     bool need_value = false;
+    bool need_float_value = false;
     bool need_target = true; // default cmd is get brightness
     bool specified_target = false;
     snprintf(ctrl_name, sizeof(ctrl_name), "%s", "sysfs/backlight/auto");
     
-    while((curr_arg = getopt(argc, argv, "HhVGSLMNPAUOIv:s:r")) != -1)
+    while((curr_arg = getopt(argc, argv, "HhVGSLMNPAUTOIv:s:r")) != -1)
     {
         switch(curr_arg)
         {
@@ -313,6 +315,11 @@ static bool _light_parse_arguments(light_context_t *ctx, int argc, char** argv)
                 need_target = true;
                 need_value = true;
                 break;
+            case 'T':
+                _light_set_context_command(ctx, light_cmd_mul_brightness);
+                need_target = true;
+                need_float_value = true;
+                break;
             case 'O':
                 _light_set_context_command(ctx, light_cmd_save_brightness);
                 need_target = true;
@@ -348,8 +355,8 @@ static bool _light_parse_arguments(light_context_t *ctx, int argc, char** argv)
         
         ctx->run_params.device_target = curr_target;
     }
-    
-    if(need_value)
+
+    if(need_value || need_float_value)
     {
         if ( (argc - optind) != 1)
         {
@@ -357,7 +364,10 @@ static bool _light_parse_arguments(light_context_t *ctx, int argc, char** argv)
             _light_print_usage();
             return false;
         }
+    }
 
+    if (need_value)
+    {
         if (ctx->run_params.raw_mode)
         {
             if (sscanf(argv[optind], "%lu", &ctx->run_params.value) != 1)
@@ -366,7 +376,6 @@ static bool _light_parse_arguments(light_context_t *ctx, int argc, char** argv)
                 _light_print_usage();
                 return false;
             }
-            
         }
         else
         {
@@ -390,7 +399,17 @@ static bool _light_parse_arguments(light_context_t *ctx, int argc, char** argv)
             ctx->run_params.value = raw_value;
         }
     }
-    
+
+    if (need_float_value)
+    {
+        if (sscanf(argv[optind], "%f", &ctx->run_params.float_value) != 1)
+        {
+            fprintf(stderr, "<value> is not a float.\n\n");
+            _light_print_usage();
+            return false;
+        }
+    }
+
     return true;
     
 }
@@ -910,6 +929,51 @@ bool light_cmd_sub_brightness(light_context_t *ctx)
         return false;
     }
     
+    return true;
+}
+
+bool light_cmd_mul_brightness(light_context_t *ctx)
+{
+    light_device_target_t *target = ctx->run_params.device_target;
+    if(target == NULL)
+    {
+        LIGHT_ERR("didn't have a valid target, programmer mistake");
+        return false;
+    }
+
+    uint64_t value = 0;
+    if(!target->get_value(target, &value))
+    {
+        LIGHT_ERR("failed to read from target");
+        return false;
+    }
+
+    uint64_t max_value = 0;
+    if(!target->get_max_value(target, &max_value))
+    {
+        LIGHT_ERR("failed to read from target");
+        return false;
+    }
+
+    value *= ctx->run_params.float_value;
+
+    uint64_t mincap = _light_get_min_cap(ctx);
+    if(mincap > value)
+    {
+        value = mincap;
+    }
+
+    if(value > max_value)
+    {
+        value = max_value;
+    }
+
+    if(!target->set_value(target, value))
+    {
+        LIGHT_ERR("failed to write to target");
+        return false;
+    }
+
     return true;
 }
 
