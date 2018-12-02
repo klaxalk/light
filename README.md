@@ -108,11 +108,11 @@ Installation
 
 ### Arch Linux
 
-If you run Arch Linux, we highly recommend the PKGBUILD in the repo. However there also exist 2 packages in the AUR, which we aim to replace;
+The latest stable release is available in official repos, install with:
 
-* [light-git][] - For the latest development branch (master)
-* [light][] - For the latest stable release
+    pacman -S light
 
+Additionally, the latest development branch (master) is available on AUR: [light-git][]
 
 ### Fedora
 
@@ -168,4 +168,3 @@ specific `~/.cache/light` is used.
 
 [Light]:     https://github.com/haikarainen/light/
 [light-git]: https://aur.archlinux.org/packages/light-git
-[light]: https://aur.archlinux.org/packages/light
