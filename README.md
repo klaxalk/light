@@ -87,8 +87,8 @@ You may only specify one command flag at a time. These flags decide what the pro
 *  `-G` Get brightness
 *  `-N` Set minimum brightness to value (value needed!)
 *  `-P` Get minimum brightness
-*  `-I` Save the current brightness
-*  `-O` Restore the previously saved brightness
+*  `-O` Save the current brightness
+*  `-I` Restore the previously saved brightness
 
 Without any extra options, the command will operate on the device called `sysfs/backlight/auto`, which works as it's own device however it proxies the backlight device that has the highest controller resolution (read: highest precision). Values are interpreted and printed as percentage between 0.0 - 100.0.
 

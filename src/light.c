@@ -195,8 +195,8 @@ static void _light_print_usage()
         "  -G          Get brightness\n"
         "  -N          Set minimum brightness to value\n"
         "  -P          Get minimum brightness\n"
-        "  -I          Save the current brightness\n"
-        "  -O          Restore the previously saved brightness\n"
+        "  -O          Save the current brightness\n"
+        "  -I          Restore the previously saved brightness\n"
 
 
         "\n"
