@@ -163,7 +163,7 @@ If your udev rules are located elsewhere, use `--with-udev=PATH`.
 
 **Note:** in this mode `light` runs unpriviliged, so the `/etc/light`
 directory (for cached settings) is not used, instead the per-user
-specific `~/.cache/light` is used.
+specific `~/.config/light` is used.
 
 
 [Light]:     https://github.com/haikarainen/light/
