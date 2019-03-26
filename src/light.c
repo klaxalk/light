@@ -957,15 +957,14 @@ bool light_cmd_mul_brightness(light_context_t *ctx)
 
     uint64_t old_value = value;
     value *= ctx->run_params.float_value;
-    
+ 
     // Check that we actually de/increase value
-    if( value == old_value ) {
-        if( ctx->runs_params.float_value > 1 ) {
+    if(value == old_value)
+    {
+        if(ctx->runs_params.float_value > 1)
             value++;
-        }
-        if( ctx->runs_params.float_value < 1 && value > 0 ) {
+        if(ctx->runs_params.float_value < 1 && value > 0)
             value--;
-        }
     }
 
     uint64_t mincap = _light_get_min_cap(ctx);
