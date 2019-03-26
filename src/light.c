@@ -961,9 +961,9 @@ bool light_cmd_mul_brightness(light_context_t *ctx)
     // Check that we actually de/increase value
     if(value == old_value)
     {
-        if(ctx->runs_params.float_value > 1)
+        if(ctx->run_params.float_value > 1)
             value++;
-        if(ctx->runs_params.float_value < 1 && value > 0)
+        if(ctx->run_params.float_value < 1 && value > 0)
             value--;
     }
 
