@@ -72,8 +72,10 @@ struct _light_context_t
 {
     struct 
     {
-        LFUNCCOMMAND            command; // What command was issued 
+        LFUNCCOMMAND            command; // What command was issued
+        // Only one of value and raw_value is populated; which one depends on the command
         uint64_t                value; // The input value, in raw mode
+        float                   float_value; // The input value as a float
         bool                    raw_mode; // Whether or not we use raw or percentage mode
         light_device_target_t   *device_target; // The device target to act on
     } run_params;
@@ -98,6 +100,7 @@ bool light_cmd_set_min_brightness(light_context_t *ctx); // N
 bool light_cmd_get_min_brightness(light_context_t *ctx); // P
 bool light_cmd_add_brightness(light_context_t *ctx); // A
 bool light_cmd_sub_brightness(light_context_t *ctx); // U
+bool light_cmd_mul_brightness(light_context_t *ctx); // T
 bool light_cmd_save_brightness(light_context_t *ctx); // O
 bool light_cmd_restore_brightness(light_context_t *ctx); // I
 
