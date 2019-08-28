@@ -24,7 +24,7 @@ typedef enum {
 light_loglevel_t light_loglevel;
 
 #define LIGHT_LOG(lvl, fp, fmt, args...)\
-    if (light_loglevel >= lvl)\
+    if(light_loglevel >= lvl)\
         fprintf(fp, "%s:%d:" fmt "\n", __FILE__, __LINE__, ##args)
 
 #define LIGHT_NOTE(fmt, args...) LIGHT_LOG(LIGHT_NOTE_LEVEL,  stdout, " Notice: " fmt, ##args)
