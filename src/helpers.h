@@ -35,7 +35,7 @@ light_loglevel_t light_loglevel;
     do {\
         log("could not open '%s' for " act, filename);\
         log("Verify it exists with the right permissions");\
-    } while (0)
+    } while(0)
 
 #define LIGHT_PERMERR(x)         LIGHT_PERMLOG(x, LIGHT_ERR)
 #define LIGHT_PERMWARN(x)        LIGHT_PERMLOG(x, LIGHT_WARN)
