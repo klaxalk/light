@@ -248,14 +248,14 @@ static bool _light_parse_arguments(light_context_t *ctx, int argc, char** argv)
             // Options
             
             case 'v':
-                if (sscanf(optarg, "%i", &log_level) != 1)
+                if(sscanf(optarg, "%i", &log_level) != 1)
                 {
                     fprintf(stderr, "-v argument is not an integer.\n\n");
                     _light_print_usage();
                     return false;
                 }
                 
-                if (log_level < 0 || log_level > 3)
+                if(log_level < 0 || log_level > 3)
                 {
                     fprintf(stderr, "-v argument must be between 0 and 3.\n\n");
                     _light_print_usage();
@@ -358,7 +358,7 @@ static bool _light_parse_arguments(light_context_t *ctx, int argc, char** argv)
 
     if(need_value || need_float_value)
     {
-        if ( (argc - optind) != 1)
+        if( (argc - optind) != 1)
         {
             fprintf(stderr, "please specify a <value> for this command.\n\n");
             _light_print_usage();
@@ -366,11 +366,11 @@ static bool _light_parse_arguments(light_context_t *ctx, int argc, char** argv)
         }
     }
 
-    if (need_value)
+    if(need_value)
     {
-        if (ctx->run_params.raw_mode)
+        if(ctx->run_params.raw_mode)
         {
-            if (sscanf(argv[optind], "%lu", &ctx->run_params.value) != 1)
+            if(sscanf(argv[optind], "%lu", &ctx->run_params.value) != 1)
             {
                 fprintf(stderr, "<value> is not an integer.\n\n");
                 _light_print_usage();
@@ -380,7 +380,7 @@ static bool _light_parse_arguments(light_context_t *ctx, int argc, char** argv)
         else
         {
             double percent_value = 0.0;
-            if (sscanf(argv[optind], "%lf", &percent_value) != 1)
+            if(sscanf(argv[optind], "%lf", &percent_value) != 1)
             {
                 fprintf(stderr, "<value> is not a decimal.\n\n");
                 _light_print_usage();
@@ -400,9 +400,9 @@ static bool _light_parse_arguments(light_context_t *ctx, int argc, char** argv)
         }
     }
 
-    if (need_float_value)
+    if(need_float_value)
     {
-        if (sscanf(argv[optind], "%f", &ctx->run_params.float_value) != 1)
+        if(sscanf(argv[optind], "%f", &ctx->run_params.float_value) != 1)
         {
             fprintf(stderr, "<value> is not a float.\n\n");
             _light_print_usage();
@@ -433,7 +433,7 @@ light_context_t* light_initialize(int argc, char **argv)
 
     // Setup the configuration folder
     // If we are root, use the system-wide configuration folder, otherwise try to find a user-specific folder, or fall back to ~/.config
-    if (geteuid() == 0)
+    if(geteuid() == 0)
     {
         snprintf(new_ctx->sys_params.conf_dir, sizeof(new_ctx->sys_params.conf_dir), "%s", "/etc/light");
     }
@@ -441,7 +441,7 @@ light_context_t* light_initialize(int argc, char **argv)
     {
         char *xdg_conf = getenv("XDG_CONFIG_HOME");
         
-        if (xdg_conf != NULL)
+        if(xdg_conf != NULL)
         {
             snprintf(new_ctx->sys_params.conf_dir, sizeof(new_ctx->sys_params.conf_dir), "%s/light", xdg_conf);
         }
@@ -453,7 +453,7 @@ light_context_t* light_initialize(int argc, char **argv)
     
     // Make sure the configuration folder exists, otherwise attempt to create it
     int32_t rc = light_mkpath(new_ctx->sys_params.conf_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    if (rc && errno != EEXIST)
+    if(rc && errno != EEXIST)
     {
         LIGHT_WARN("couldn't create configuration directory");
         return false;
@@ -789,7 +789,7 @@ bool light_cmd_set_min_brightness(light_context_t *ctx)
     
     // Make sure the target folder exists, otherwise attempt to create it
     int32_t rc = light_mkpath(target_path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    if (rc && errno != EEXIST)
+    if(rc && errno != EEXIST)
     {
         LIGHT_ERR("couldn't create target directory for minimum brightness");
         return false;
@@ -994,7 +994,7 @@ bool light_cmd_save_brightness(light_context_t *ctx)
     
     // Make sure the target folder exists, otherwise attempt to create it
     int32_t rc = light_mkpath(target_path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    if (rc && errno != EEXIST)
+    if(rc && errno != EEXIST)
     {
         LIGHT_ERR("couldn't create target directory for save brightness");
         return false;
