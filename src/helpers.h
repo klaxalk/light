@@ -24,7 +24,7 @@ typedef enum {
 light_loglevel_t light_loglevel;
 
 #define LIGHT_LOG(lvl, fp, fmt, args...)\
-    if (light_loglevel >= lvl)\
+    if(light_loglevel >= lvl)\
         fprintf(fp, "%s:%d:" fmt "\n", __FILE__, __LINE__, ##args)
 
 #define LIGHT_NOTE(fmt, args...) LIGHT_LOG(LIGHT_NOTE_LEVEL,  stdout, " Notice: " fmt, ##args)
@@ -35,7 +35,7 @@ light_loglevel_t light_loglevel;
     do {\
         log("could not open '%s' for " act, filename);\
         log("Verify it exists with the right permissions");\
-    } while (0)
+    } while(0)
 
 #define LIGHT_PERMERR(x)         LIGHT_PERMLOG(x, LIGHT_ERR)
 #define LIGHT_PERMWARN(x)        LIGHT_PERMLOG(x, LIGHT_WARN)
