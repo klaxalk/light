@@ -131,6 +131,14 @@ the development branch guidelines below followed by:
 
     make deb
 
+### NixOS/nix
+
+You can add the following line to your `configuration.nix`:
+
+    programs.light.enable = true;
+
+For more detail on Backlight control in NixOS and setting system keybindings, visit the [NixOS Wiki page](https://nixos.wiki/wiki/Backlight)
+
 ### Manual
 
 If you download a stable release, these are the commands that will get you up and running:
