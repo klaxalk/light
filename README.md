@@ -18,9 +18,10 @@ Light - A program to control backlights (and other hardware lights) in GNU/Linux
 - [Installation](#installation)
   - [Arch Linux](#arch-linux)
   - [Fedora](#fedora)
+  - [Debian/Ubuntu](#debian)
+  - [NixOS/nix](#nix)
   - [Manual](#manual)
   - [Permissions](#permissions)
-- [Origin & References](#origin--references)
 
 
 Introduction
@@ -122,7 +123,7 @@ Fedora already has light packaged in main repos, so just run:
 
 and you're good to go.
 
-### Debian/Ubuntu
+### <a name="debian"></a>Debian/Ubuntu
 
 Pre-built .deb files, for the latest Ubuntu release, can be downloaded
 from the [GitHub](https://github.com/haikarainen/light/releases/) releases page.  If you want to build your own
@@ -131,7 +132,7 @@ the development branch guidelines below followed by:
 
     make deb
 
-### NixOS/nix
+### <a name="nix"></a>NixOS/nix
 
 You can add the following line to your `configuration.nix`:
 
