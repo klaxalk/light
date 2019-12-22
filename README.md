@@ -132,6 +132,8 @@ the development branch guidelines below followed by:
 
     make deb
 
+**Note:** you must be in the `video` group. Add yourself to it by running `sudo usermod -a -G video $USER`.
+
 ### <a name="nix"></a>NixOS/nix
 
 You can add the following line to your `configuration.nix`:
