@@ -1,19 +1,20 @@
 Source: light
-Section: x11
+Section: misc
 Priority: optional
-Maintainer: Joachim Nilsson <troglobit@gmail.com>
+Maintainer: Samuel Henrique <samueloph@debian.org>
 Homepage: https://github.com/haikarainen/light
-Build-Depends: debhelper (>= 10)
-Vcs-Git: https://github.com/haikarainen/light.git
-Vcs-Browser: https://github.com/haikarainen/light/commits/
-Standards-Version: 4.2.1
+Build-Depends: debhelper-compat (= 12)
+Vcs-Browser: https://salsa.debian.org/debian/light
+Vcs-Git: https://salsa.debian.org/debian/light.git
+Standards-Version: 4.4.1
+Rules-Requires-Root: no
 
 Package: light
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: Control display backlight controllers and LEDs
+Depends: udev, ${shlibs:Depends}, ${misc:Depends}
+Description: control display backlight controllers and LEDs
  Light is a useful tool to control display brightness in lightweight
- desktops or window managers that do not have bundled appliations for
+ desktops or window managers that do not have bundled applications for
  this purpose.
  .
  Most modern laptops have moved away from hardware controlled brightness

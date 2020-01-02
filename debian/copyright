@@ -1,31 +1,27 @@
-Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: light
 Source: https://github.com/haikarainen/light
 
 Files: *
-Copyright: Copyright 2012-2018  Fredrik Haikarainen <fredrik.haikarainen@gmail.com>
+Copyright: 2012-2018 Fredrik Haikarainen <fredrik.haikarainen@gmail.com>
 License: GPL-3
 
 Files: debian/*
-Copyright: Copyright 2018  Joachim Nilsson <troglobit@gmail.com>
+Copyright: 2018 Joachim Nilsson <troglobit@gmail.com>
+           2019 Samuel Henrique <samueloph@debian.org>
 License: GPL-3
 
 License: GPL-3
- Indicator Weather is free software; you can redistribute it
- and/or modify it under the terms of the GNU General Public
- License version 3 as published by the Free Software Foundation.
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
  .
- Indicator Weather is distributed in the hope that it will be
- useful, but WITHOUT ANY WARRANTY; without even the implied
- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- PURPOSE.  See the GNU General Public License for more
- details. http://www.gnu.org/licenses/
- .
- You should have received a copy of the GNU General Public
- License along with this package; if not, write to the Free
- Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- Boston, MA  02110-1301 USA
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
  .
  On Debian systems, the full text of the GNU General Public
  License version 3 can be found in the file
-`/usr/share/common-licenses/GPL-3'.
+ `/usr/share/common-licenses/GPL-3'.

@@ -1,6 +1,11 @@
-light (1.2) unstable; urgency=low
+light (1.2.1-1) unstable; urgency=medium
 
-  * Initial Debian Release.
+  * Initial Debian Release (Closes: #947974)
+    Thanks to Joachim Nilsson for the initial work
+  * d/control: Add dependency on udev
+  * d/light.postinst: Add udevadm trigger to reload permissions rules
+  * Fix udevadm trigger to make it effective without reboot
+  * d/copyright: Add myself
+  * d/control: Fix typo in description
 
- -- Joachim Nilsson <troglobit@gmail.com>  Sat, 22 Sep 2018 11:53:32 +0200
-
+ -- Samuel Henrique <samueloph@debian.org>  Thu, 02 Jan 2020 22:45:35 +0000
