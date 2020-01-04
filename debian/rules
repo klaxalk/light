@@ -6,8 +6,10 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 	dh $@
 
 override_dh_auto_configure:
-	dh_auto_configure -- --with-udev=/lib/udev/rules.d
-
+	dh_auto_configure -- --with-udev
+	# Change action type of udev rules to make it effective after
+	# installation, they are reset back with the poinst script.
+	sed -i 's/^ACTION=="add"/ACTION=="change"/g' 90-backlight.rules
 
 override_dh_installchangelogs:
 	dh_installchangelogs ChangeLog.md

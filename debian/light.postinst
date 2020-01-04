@@ -1,0 +1,12 @@
+#!/bin/sh
+
+set -e
+
+#DEBHELPER#
+
+udevadm control --reload
+udevadm trigger --subsystem-match=backlight --subsystem-match=leds --action=change --settle
+
+# Reset udev rule action back to 'add', it was set to 'change' during
+# dh_auto_configure to make sure they are effective right away.
+sed -i 's/^ACTION=="change"/ACTION=="add"/g' /usr/lib/udev/rules.d/90-backlight.rules
