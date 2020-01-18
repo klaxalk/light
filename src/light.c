@@ -431,9 +431,25 @@ light_context_t* light_initialize(int argc, char **argv)
     new_ctx->run_params.value = 0;
     new_ctx->run_params.raw_mode = false;
 
+    uid_t uid = getuid();
+    uid_t euid = geteuid();
+    gid_t egid = getegid();
+    // If the real user ID is different from the effective user ID (SUID mode)
+    // and if we have the effective user ID of root (0)
+    // and if the effective group ID is different from root (0),
+    // then make sure to set the effective group ID to root (0).
+    if((uid != euid) && (euid == 0) && (egid != 0))
+    {
+        if(setegid(euid) < 0)
+        {
+            LIGHT_ERR("could not change egid from %u to %u (uid: %u, euid: %u)", egid, euid, uid, euid);
+            return false;
+        }
+    }
+
     // Setup the configuration folder
     // If we are root, use the system-wide configuration folder, otherwise try to find a user-specific folder, or fall back to ~/.config
-    if(geteuid() == 0)
+    if(euid == 0)
     {
         snprintf(new_ctx->sys_params.conf_dir, sizeof(new_ctx->sys_params.conf_dir), "%s", "/etc/light");
     }
