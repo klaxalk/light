@@ -5,5 +5,5 @@ light_CFLAGS   = -W -Wall -Wextra -std=gnu99 -Wno-type-limits -Wno-format-trunca
 
 if CLASSIC
 install-exec-hook:
-	chmod 4755 $(DESTDIR)$(bindir)/light
+	chmod 6755 $(DESTDIR)$(bindir)/light
 endif
